@@ -1,0 +1,6 @@
+@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/
+@contracts-bedrock/=lib/optimism/packages/contracts-bedrock/
+@uniswap/v4-core/=lib/v4-core/
+@uniswap/v4-periphery/=lib/v4-periphery/
+@uniswap/universal-router/=lib/universal-router/
+@uniswap/permit2/=lib/permit2/
