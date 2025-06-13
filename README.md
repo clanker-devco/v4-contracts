@@ -1,6 +1,6 @@
 # v4.0.0-contracts
 
-Smart contracts of Clanker v4.0
+Smart contracts of Clanker v4.0.0
 
 Clanker is an autonomous agent for deploying tokens. Currently, users may request clanker to deploy an ERC-20 token on Base by tagging [@clanker](https://farcaster.xyz/clanker/casts-and-replies) on Farcaster, on our website [clanker.world](https://www.clanker.world/deploy), by using one of our interface partners, or through the smart contracts directly. This repo contains the onchain code utilized by the clanker agent for token deployment, token pre-launch distribution, and LP fee management.
 
@@ -16,15 +16,26 @@ As Clanker deploys tokens, it also creates dynamic fee Uniswap V4 pools using ou
 
 Check out our [dune dashboards](https://dune.com/clanker_protection_team) for token stats and our website [clanker.world](https://clanker.world) to see the clanker tokens in action and to launch a token.
 
+### v4.0.0 (Base Mainnet)
+- Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
+- ClankerFeeLocker: [0xF3622742b1E446D92e45E22923Ef11C2fcD55D68](https://basescan.org/address/0xF3622742b1E446D92e45E22923Ef11C2fcD55D68)
+- ClankerLpLocker: [0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0](https://basescan.org/address/0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0)
+- ClankerVault: [0x8E845EAd15737bF71904A30BdDD3aEE76d6ADF6C](https://basescan.org/address/0x8E845EAd15737bF71904A30BdDD3aEE76d6ADF6C)
+- ClankerAirdrop: [0x56Fa0Da89eD94822e46734e736d34Cab72dF344F](https://basescan.org/address/0x56Fa0Da89eD94822e46734e736d34Cab72dF344F)
+- ClankerUniv4EthDevBuy: [0x1331f0788F9c08C8F38D52c7a1152250A9dE00be](https://basescan.org/address/0x1331f0788F9c08C8F38D52c7a1152250A9dE00be)
+- ClankerMevBlockDelay: [0xE143f9872A33c955F23cF442BB4B1EFB3A7402A2](https://basescan.org/address/0xE143f9872A33c955F23cF442BB4B1EFB3A7402A2)
+- ClankerHookDynamicFee: [0x34a45c6B61876d739400Bd71228CbcbD4F53E8cC](https://basescan.org/address/0x34a45c6B61876d739400Bd71228CbcbD4F53E8cC)
+- ClankerHookStaticFee: [0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC](https://basescan.org/address/0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC)
+
 ### v4.0.0 (Base Sepolia)
-- Clanker: [0x41E02952482e5Aa2e649855155bFD72A446f424F](https://sepolia.basescan.org/address/0x41E02952482e5Aa2e649855155bFD72A446f424F)
-- ClankerFeeLocker: [0x49a8896bA71990d8D1E0D82F4cB0563aBd51C228](https://sepolia.basescan.org/address/0x49a8896bA71990d8D1E0D82F4cB0563aBd51C228)
-- ClankerLpLockerMultiple: [0x85cCe34e56DD838BF812B1aE8b1E5D2058a14e08](https://sepolia.basescan.org/address/0x85cCe34e56DD838BF812B1aE8b1E5D2058a14e08)
-- ClankerVault: [0x20114919C35B520e7dA9a8d895DF0fe175e01f39](https://sepolia.basescan.org/address/0x20114919C35B520e7dA9a8d895DF0fe175e01f39)
-- ClankerAirdrop: [0x6637082F78116ead3C57eD03D93B56405D0398aa](https://sepolia.basescan.org/address/0x6637082F78116ead3C57eD03D93B56405D0398aa)
-- ClankerUniv4EthDevBuy: [0xFc88f3A73DE4007342cf46F4fc3914FF4e4A58BB](https://sepolia.basescan.org/address/0xFc88f3A73DE4007342cf46F4fc3914FF4e4A58BB)
-- ClankerMevBlockDelay: [0xf2226f4fE61C7c62f112E9B244DbEB5918A4982C](https://sepolia.basescan.org/address/0xf2226f4fE61C7c62f112E9B244DbEB5918A4982C)
-- ClankerHookDynamicFee: [0x9c9048D6C68B2d87f3Cc10A224A5504149E168cC](https://sepolia.basescan.org/address/0x9c9048D6C68B2d87f3Cc10A224A5504149E168cC)
+- Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://sepolia.basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
+- ClankerFeeLocker: [0x42A95190B4088C88Dd904d930c79deC1158bF09D](https://sepolia.basescan.org/address/0x42A95190B4088C88Dd904d930c79deC1158bF09D)
+- ClankerLpLockerMultiple: [0x33e2Eda238edcF470309b8c6D228986A1204c8f9](https://sepolia.basescan.org/address/0x33e2Eda238edcF470309b8c6D228986A1204c8f9)
+- ClankerVault: [0xcC80d1226F899a78fC2E459a1500A13C373CE0A5](https://sepolia.basescan.org/address/0xcC80d1226F899a78fC2E459a1500A13C373CE0A5)
+- ClankerAirdrop: [0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0](https://sepolia.basescan.org/address/0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0)
+- ClankerUniv4EthDevBuy: [0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c](https://sepolia.basescan.org/address/0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c)
+- ClankerMevBlockDelay: [0x71DB365E93e170ba3B053339A917c11024e7a9d4](https://sepolia.basescan.org/address/0x71DB365E93e170ba3B053339A917c11024e7a9d4)
+- ClankerHookDynamicFee: [0xE63b0A59100698f379F9B577441A561bAF9828cc](https://sepolia.basescan.org/address/0xE63b0A59100698f379F9B577441A561bAF9828cc)
 - ClankerHookStaticFee: [0x3eC2a26b6eF16c288561692AE8D9681fa773A8cc](https://sepolia.basescan.org/address/0x3eC2a26b6eF16c288561692AE8D9681fa773A8cc)
 
 
