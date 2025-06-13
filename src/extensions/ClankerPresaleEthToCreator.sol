@@ -13,26 +13,22 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
 import {Test, console} from "forge-std/Test.sol";
 
-contract ClankerPresaleEthToCreator is
-    ReentrancyGuard,
-    IClankerExtension,
-    IClankerPresaleEthToCreator,
-    OwnerAdmins
-{
+contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCreator, OwnerAdmins {
     uint256 public constant WITHDRAW_FEE_BPS = 100; // 1%
     uint256 public constant MAX_PRESALE_DURATION = 6 weeks;
     uint256 public constant SALT_SET_BUFFER = 1 days; // buffer for presale admin to set salt for deployment
     uint256 public constant DEPLOYMENT_BAD_BUFFER = 1 days; // buffer for deployment to be considered bad
-    IClanker public factory;
+    IClanker public immutable factory;
 
     uint256 private _presaleId;
-    mapping(uint256 => Presale) public presaleState; // presaleId -> presale state
+    mapping(uint256 presaleId => Presale presale) public presaleState;
 
     // presale user buy and claim amounts
-    mapping(uint256 => mapping(address => uint256)) public presaleBuys; // presaleId -> address -> amount
-    mapping(uint256 => mapping(address => uint256)) public presaleClaimed; // presaleId -> address -> amount
+    mapping(uint256 presaleId => mapping(address user => uint256 amount)) public presaleBuys;
+    mapping(uint256 presaleId => mapping(address user => uint256 amount)) public presaleClaimed;
 
     address public withdrawFeeRecipient;
+    uint256 public withdrawFeeAccumulated;
 
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert Unauthorized();
@@ -72,6 +68,14 @@ contract ClankerPresaleEthToCreator is
 
     function setWithdrawFeeRecipient(address recipient) external onlyOwner {
         withdrawFeeRecipient = recipient;
+    }
+
+    function withdrawWithdrawFee() external nonReentrant {
+        uint256 amount = withdrawFeeAccumulated;
+        if (amount == 0) revert NoWithdrawFeeAccumulated();
+        withdrawFeeAccumulated = 0;
+        (bool sent,) = payable(withdrawFeeRecipient).call{value: amount}("");
+        if (!sent) revert EthTransferFailed();
     }
 
     function startPresale(
@@ -208,10 +212,6 @@ contract ClankerPresaleEthToCreator is
         presale.lockupEndTime = block.timestamp + presale.lockupDuration;
         presale.vestingEndTime = block.timestamp + presale.lockupDuration + presale.vestingDuration;
 
-        // encode presale id into extension config data
-        presale.deploymentConfig.extensionConfigs[presale.deploymentConfig.extensionConfigs.length
-            - 1].extensionData = abi.encode(presaleId);
-
         // set deployment ongoing to true
         presale.deploymentExpected = true;
 
@@ -219,11 +219,16 @@ contract ClankerPresaleEthToCreator is
         token = factory.deployToken(presale.deploymentConfig);
     }
 
-    function buyIntoPresale(uint256 presaleId) external payable presaleExists(presaleId) {
+    function buyIntoPresale(uint256 presaleId)
+        external
+        payable
+        presaleExists(presaleId)
+        nonReentrant
+    {
         Presale storage presale = presaleState[presaleId];
 
         // ensure presale is active and time limit has not been reached
-        if (presale.status != PresaleStatus.Active || presale.endTime < block.timestamp) {
+        if (presale.status != PresaleStatus.Active || presale.endTime <= block.timestamp) {
             revert PresaleNotActive();
         }
 
@@ -231,12 +236,6 @@ contract ClankerPresaleEthToCreator is
         uint256 ethToUse = msg.value + presale.ethRaised > presale.maxEthGoal
             ? presale.maxEthGoal - presale.ethRaised
             : msg.value;
-
-        // refund excess eth
-        if (msg.value > ethToUse) {
-            // refund excess eth
-            payable(msg.sender).transfer(msg.value - ethToUse);
-        }
 
         // record a user's eth contribution
         presaleBuys[presaleId][msg.sender] += ethToUse;
@@ -248,12 +247,20 @@ contract ClankerPresaleEthToCreator is
         if (presale.ethRaised == presale.maxEthGoal) {
             presale.status = PresaleStatus.SuccessfulMaximumHit;
         }
+
+        // refund excess eth
+        if (msg.value > ethToUse) {
+            // send eth to recipient
+            (bool sent,) = payable(msg.sender).call{value: msg.value - ethToUse}("");
+            if (!sent) revert EthTransferFailed();
+        }
     }
 
     function withdrawFromPresale(uint256 presaleId, uint256 amount, address recipient)
         external
         presaleExists(presaleId)
         updatePresaleState(presaleId)
+        nonReentrant
     {
         Presale storage presale = presaleState[presaleId];
 
@@ -282,15 +289,14 @@ contract ClankerPresaleEthToCreator is
         }
         uint256 amountAfterFee = amount - fee;
 
+        // accumulate fee
+        if (fee > 0) {
+            withdrawFeeAccumulated += fee;
+        }
+
         // send eth to recipient
         (bool sent,) = payable(recipient).call{value: amountAfterFee}("");
         if (!sent) revert EthTransferFailed();
-
-        // send fee to withdraw fee recipient
-        if (fee > 0) {
-            payable(withdrawFeeRecipient).call{value: fee}("");
-            // TODO don't revert as user protection ?
-        }
     }
 
     function claimTokens(uint256 presaleId) external presaleExists(presaleId) {

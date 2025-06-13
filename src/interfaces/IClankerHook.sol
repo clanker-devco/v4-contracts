@@ -28,6 +28,7 @@ interface IClankerHook {
         PoolId poolId,
         int24 tickIfToken0IsClanker,
         int24 tickSpacing,
+        address locker,
         address mevModule
     );
 
@@ -41,6 +42,7 @@ interface IClankerHook {
         address pairedToken,
         int24 tickIfToken0IsClanker,
         int24 tickSpacing,
+        address locker,
         address mevModule,
         bytes calldata poolData
     ) external returns (PoolKey memory);

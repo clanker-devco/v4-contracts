@@ -15,55 +15,55 @@ contract ClankerHookDynamicFee is ClankerHook, IClankerHookDynamicFee {
     using StateLibrary for IPoolManager;
 
     uint24 public constant BPS_DENOMINATOR = 10_000;
-    uint24 public constant MIN_BASE_FEE = 2500; // 0.025%;
+    uint24 public constant MIN_BASE_FEE = 2500; // 0.25%;
     uint256 public constant MAX_DECAY_FILTER_BPS = 30_000;
-    uint24 public constant FEE_CONTROL_DENOMINATOR = 1_000_000;
+    uint256 public constant FEE_CONTROL_DENOMINATOR = 10_000_000_000;
 
-    mapping(PoolId => PoolDynamicFeeVars) public poolFeeVars;
-    mapping(PoolId => PoolDynamicConfigVars) public poolConfigVars;
-
-    struct PoolDynamicFeeVars {
-        int24 referenceTick;
-        int24 resetTick;
-        uint256 resetTickTimestamp;
-        uint256 lastSwapTimestamp;
-        uint24 appliedVR; // applied volatility reference
-        uint24 prevVA; // swap's previous volatility accumulation, used to generate the volatility reference
-    }
+    mapping(PoolId => PoolDynamicFeeVars) internal _poolFeeVars;
+    mapping(PoolId => PoolDynamicConfigVars) internal _poolConfigVars;
 
     error TickReturned(int24 tick);
 
-    constructor(address _poolManager, address _factory, address _locker, address _weth)
-        ClankerHook(_poolManager, _factory, _locker, _weth)
+    constructor(address _poolManager, address _factory, address _weth)
+        ClankerHook(_poolManager, _factory, _weth)
     {}
 
-    function _initializePoolData(PoolKey memory poolKey, bytes memory poolData) internal override {
-        PoolDynamicConfigVars memory _poolConfigVars = abi.decode(poolData, (PoolDynamicConfigVars));
+    function poolConfigVars(PoolId poolId) external view returns (PoolDynamicConfigVars memory) {
+        return _poolConfigVars[poolId];
+    }
 
-        if (_poolConfigVars.baseFee < MIN_BASE_FEE) {
+    function poolFeeVars(PoolId poolId) external view returns (PoolDynamicFeeVars memory) {
+        return _poolFeeVars[poolId];
+    }
+
+    function _initializePoolData(PoolKey memory poolKey, bytes memory poolData) internal override {
+        PoolDynamicConfigVars memory __poolConfigVars =
+            abi.decode(poolData, (PoolDynamicConfigVars));
+
+        if (__poolConfigVars.baseFee < MIN_BASE_FEE) {
             revert BaseFeeTooLow();
         }
 
-        if (_poolConfigVars.maxLpFee > MAX_LP_FEE) {
+        if (__poolConfigVars.maxLpFee > MAX_LP_FEE) {
             revert MaxLpFeeTooHigh();
         }
 
-        if (_poolConfigVars.baseFee > _poolConfigVars.maxLpFee) {
+        if (__poolConfigVars.baseFee > __poolConfigVars.maxLpFee) {
             revert BaseFeeGreaterThanMaxLpFee();
         }
 
         emit PoolInitialized({
             poolId: poolKey.toId(),
-            baseFee: _poolConfigVars.baseFee,
-            maxLpFee: _poolConfigVars.maxLpFee,
-            referenceTickFilterPeriod: _poolConfigVars.referenceTickFilterPeriod,
-            feeControlNumerator: _poolConfigVars.feeControlNumerator,
-            decayFilterBps: _poolConfigVars.decayFilterBps,
-            resetPeriod: _poolConfigVars.resetPeriod,
-            resetTickFilter: _poolConfigVars.resetTickFilter
+            baseFee: __poolConfigVars.baseFee,
+            maxLpFee: __poolConfigVars.maxLpFee,
+            referenceTickFilterPeriod: __poolConfigVars.referenceTickFilterPeriod,
+            feeControlNumerator: __poolConfigVars.feeControlNumerator,
+            decayFilterBps: __poolConfigVars.decayFilterBps,
+            resetPeriod: __poolConfigVars.resetPeriod,
+            resetTickFilter: __poolConfigVars.resetTickFilter
         });
 
-        poolConfigVars[poolKey.toId()] = _poolConfigVars;
+        _poolConfigVars[poolKey.toId()] = __poolConfigVars;
     }
 
     // set the fee based on the tick after the swap
@@ -75,16 +75,16 @@ contract ClankerHookDynamicFee is ClankerHook, IClankerHookDynamicFee {
         uint24 lpFee = _getLpFee(volAccumulator, poolKey.toId());
         _setProtocolFee(lpFee);
 
-        IPoolManager(poolManager).updateDynamicLPFee(poolKey, uint24(lpFee));
+        IPoolManager(poolManager).updateDynamicLPFee(poolKey, lpFee);
     }
 
     function _getLpFee(uint256 volAccumulator, PoolId poolId) internal returns (uint24 lpFee) {
-        PoolDynamicConfigVars storage poolConfigVars_ = poolConfigVars[poolId];
-        uint256 variableFee = uint256(poolConfigVars_.feeControlNumerator) * (volAccumulator ** 2)
+        PoolDynamicConfigVars storage _poolConfigVars_ = _poolConfigVars[poolId];
+        uint256 variableFee = uint256(_poolConfigVars_.feeControlNumerator) * (volAccumulator ** 2)
             / FEE_CONTROL_DENOMINATOR;
 
-        uint256 fee = variableFee + poolConfigVars_.baseFee;
-        fee = fee > poolConfigVars_.maxLpFee ? poolConfigVars_.maxLpFee : fee;
+        uint256 fee = variableFee + _poolConfigVars_.baseFee;
+        fee = fee > _poolConfigVars_.maxLpFee ? _poolConfigVars_.maxLpFee : fee;
 
         return uint24(fee);
     }
@@ -94,8 +94,8 @@ contract ClankerHookDynamicFee is ClankerHook, IClankerHookDynamicFee {
         IPoolManager.SwapParams calldata swapParams
     ) internal returns (uint24 volatilityAccumulator) {
         PoolId poolId = poolKey.toId();
-        PoolDynamicFeeVars storage poolFVars = poolFeeVars[poolId];
-        PoolDynamicConfigVars storage poolCVars = poolConfigVars[poolId];
+        PoolDynamicFeeVars storage poolFVars = _poolFeeVars[poolId];
+        PoolDynamicConfigVars storage poolCVars = _poolConfigVars[poolId];
         // grab the tick before the swap
         (, int24 tickBefore,,) = poolManager.getSlot0(poolId);
 
@@ -210,11 +210,26 @@ contract ClankerHookDynamicFee is ClankerHook, IClankerHookDynamicFee {
         }
     }
 
-    function simulateSwap(PoolKey calldata poolKey, IPoolManager.SwapParams calldata swapParams)
+    function simulateSwap(PoolKey calldata poolKey, IPoolManager.SwapParams memory swapParams)
         external
     {
         if (msg.sender != address(this)) {
             revert("simulateSwap can only be called by the hook");
+        }
+
+        // apply the protocol fee adjustments to have simulation closer to actual result
+        bool token0IsClanker = clankerIsToken0[poolKey.toId()];
+        bool swappingForClanker = swapParams.zeroForOne != token0IsClanker;
+        bool isExactInput = swapParams.amountSpecified < 0;
+        if (isExactInput && swappingForClanker) {
+            uint128 scaledProtocolFee = uint128(protocolFee) * 1e18 / (1_000_000 + protocolFee);
+            int128 fee = int128(swapParams.amountSpecified * -int128(scaledProtocolFee) / 1e18);
+            swapParams.amountSpecified = swapParams.amountSpecified + fee;
+        }
+        if (!isExactInput && !swappingForClanker) {
+            uint128 scaledProtocolFee = uint128(protocolFee) * 1e18 / (1_000_000 - protocolFee);
+            int128 fee = int128(swapParams.amountSpecified * int128(scaledProtocolFee) / 1e18);
+            swapParams.amountSpecified = swapParams.amountSpecified + fee;
         }
 
         // run the swap

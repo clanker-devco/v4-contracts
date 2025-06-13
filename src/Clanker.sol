@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {ClankerDeployer} from "./utils/ClankerDeployer.sol";
 import {OwnerAdmins} from "./utils/OwnerAdmins.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IClanker} from "./interfaces/IClanker.sol";
 import {IClankerExtension} from "./interfaces/IClankerExtension.sol";
@@ -14,6 +15,28 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
+/*
+ .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
+/ .. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \
+\ \/\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ \/ /
+ \/ /`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'\/ / 
+ / /\  ````````````````````````````````````````````````````````````````````````````````````  / /\ 
+/ /\ \ ```````````````````````````````````````````````````````````````````````````````````` / /\ \
+\ \/ / ```````::::::::``:::````````````:::`````::::````:::`:::````:::`::::::::::`:::::::::` \ \/ /
+ \/ /  `````:+:````:+:`:+:``````````:+:`:+:```:+:+:```:+:`:+:```:+:``:+:````````:+:````:+:`  \/ / 
+ / /\  ````+:+````````+:+`````````+:+```+:+``:+:+:+``+:+`+:+``+:+```+:+````````+:+````+:+``  / /\ 
+/ /\ \ ```+#+````````+#+````````+#++:++#++:`+#+`+:+`+#+`+#++:++````+#++:++#```+#++:++#:```` / /\ \
+\ \/ / ``+#+````````+#+````````+#+`````+#+`+#+``+#+#+#`+#+``+#+```+#+````````+#+````+#+```` \ \/ /
+ \/ /  `#+#````#+#`#+#````````#+#`````#+#`#+#```#+#+#`#+#```#+#``#+#````````#+#````#+#`````  \/ / 
+ / /\  `########``##########`###`````###`###````####`###````###`##########`###````###``````  / /\ 
+/ /\ \ ```````````````````````````````````````````````````````````````````````````````````` / /\ \
+\ \/ / ```````````````````````````````````````````````````````````````````````````````````` \ \/ /
+ \/ /  ````````````````````````````````````````````````````````````````````````````````````  \/ / 
+ / /\.--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--./ /\ 
+/ /\ \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \/\ \
+\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `' /
+ `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
+*/
 
 /// @notice Clanker Token Launcher
 contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
@@ -27,13 +50,13 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
     // if true, the factory will not allow supplied token deployments
     bool public deprecated;
 
-    IClankerLpLocker locker;
-    // reciever of the fees from the factory
+    // receiver of the fees from the factory
     address public teamFeeRecipient;
     mapping(address token => DeploymentInfo deploymentInfo) public deploymentInfoForToken;
 
     // enabled factory modules
     mapping(address hook => bool enabled) enabledHooks;
+    mapping(address locker => mapping(address hook => bool enabled)) public enabledLockers;
     mapping(address extension => bool enabled) enabledExtensions;
     mapping(address mevModule => bool enabled) enabledMevModules;
 
@@ -41,19 +64,6 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         // only non-originating tokens deployments are enabled
         // before initialization
         deprecated = true;
-    }
-
-    function initialize(address locker_, address teamFeeRecipient_) external onlyOwner {
-        if (address(locker) != address(0)) revert AlreadyInitialized();
-
-        // set the locker
-        locker = IClankerLpLocker(locker_);
-
-        // set the fee recipient
-        teamFeeRecipient = teamFeeRecipient_;
-
-        // enable deployments
-        deprecated = false;
     }
 
     function setDeprecated(bool deprecated_) external onlyOwner {
@@ -68,9 +78,15 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
     }
 
     function claimTeamFees(address token) external onlyOwnerOrAdmin {
+        if (teamFeeRecipient == address(0)) revert TeamFeeRecipientNotSet();
+
         uint256 balance = IERC20(token).balanceOf(address(this));
-        IERC20(token).transfer(teamFeeRecipient, balance);
+        SafeERC20.safeTransfer(IERC20(token), teamFeeRecipient, balance);
         emit ClaimTeamFees(token, teamFeeRecipient, balance);
+    }
+
+    function tokenDeploymentInfo(address token) external view returns (DeploymentInfo memory) {
+        return deploymentInfoForToken[token];
     }
 
     function setHook(address hook, bool enabled) external onlyOwnerOrAdmin {
@@ -82,6 +98,17 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         enabledHooks[hook] = enabled;
 
         emit SetHook(hook, enabled);
+    }
+
+    function setLocker(address locker, address hook, bool enabled) external onlyOwnerOrAdmin {
+        // check that the locker supports the IClankerLpLocker interface
+        if (!IClankerLpLocker(locker).supportsInterface(type(IClankerLpLocker).interfaceId)) {
+            revert InvalidLocker();
+        }
+
+        enabledLockers[locker][hook] = enabled;
+
+        emit SetLocker(locker, hook, enabled);
     }
 
     function setMevModule(address mevModule, bool enabled) external onlyOwnerOrAdmin {
@@ -137,9 +164,12 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         uint256 poolSupply = TOKEN_SUPPLY - extensionsSupply;
 
         // configure the pool
-        PoolKey memory poolKey = _initializePool(
-            deploymentConfig.poolConfig, deploymentConfig.mevModuleConfig.mevModule, tokenAddress
-        );
+        PoolKey memory poolKey = _initializePool({
+            poolConfig: deploymentConfig.poolConfig,
+            locker: deploymentConfig.lockerConfig.locker,
+            mevModule: deploymentConfig.mevModuleConfig.mevModule,
+            newToken: tokenAddress
+        });
 
         // have locker mint liquidity and inform the hook of the position
         _initializeLiquidity(
@@ -163,6 +193,7 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         }
 
         deploymentInfoForToken[tokenAddress] = DeploymentInfo({
+            locker: deploymentConfig.lockerConfig.locker,
             token: tokenAddress,
             hook: deploymentConfig.poolConfig.hook,
             extensions: extensions
@@ -181,6 +212,7 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
             poolId: poolKey.toId(),
             startingTick: deploymentConfig.poolConfig.tickIfToken0IsClanker,
             pairedToken: deploymentConfig.poolConfig.pairedToken,
+            locker: deploymentConfig.lockerConfig.locker,
             mevModule: deploymentConfig.mevModuleConfig.mevModule,
             extensionsSupply: extensionsSupply,
             extensions: extensions
@@ -200,10 +232,12 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         );
     }
 
-    function _initializePool(PoolConfig memory poolConfig, address mevModule, address newToken)
-        internal
-        returns (PoolKey memory poolKey)
-    {
+    function _initializePool(
+        PoolConfig memory poolConfig,
+        address locker,
+        address mevModule,
+        address newToken
+    ) internal returns (PoolKey memory poolKey) {
         // check that the pool hook is enabled
         if (!enabledHooks[poolConfig.hook]) {
             revert HookNotEnabled();
@@ -215,6 +249,7 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
             poolConfig.pairedToken,
             poolConfig.tickIfToken0IsClanker,
             poolConfig.tickSpacing,
+            locker,
             mevModule,
             poolConfig.poolData
         );
@@ -227,11 +262,18 @@ contract Clanker is OwnerAdmins, ReentrancyGuard, IClanker {
         uint256 poolSupply,
         address token
     ) internal {
+        // check that the locker is enabled
+        if (!enabledLockers[lockerConfig.locker][poolConfig.hook]) {
+            revert LockerNotEnabled();
+        }
+
         // approve the liquidity locker to take the pool's token supply
-        IERC20(token).approve(address(locker), poolSupply);
+        IERC20(token).approve(address(lockerConfig.locker), poolSupply);
 
         // have the locker mint liquidity
-        locker.placeLiquidity(lockerConfig, poolConfig, poolKey, poolSupply, token);
+        IClankerLpLocker(lockerConfig.locker).placeLiquidity(
+            lockerConfig, poolConfig, poolKey, poolSupply, token
+        );
     }
 
     function _prepareExtensions(ExtensionConfig[] memory extensions)

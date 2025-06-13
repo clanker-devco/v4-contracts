@@ -15,6 +15,8 @@ contract ClankerVault is ReentrancyGuard, IClankerVault {
 
     mapping(address => Allocation) public allocation;
 
+    uint256 public constant MIN_LOCKUP_DURATION = 7 days;
+
     modifier onlyFactory() {
         if (msg.sender != factory) revert Unauthorized();
         _;
@@ -36,7 +38,7 @@ contract ClankerVault is ReentrancyGuard, IClankerVault {
         );
 
         // ensure that the msgValue is zero
-        if (deploymentConfig.extensionConfigs[extensionIndex].msgValue != 0) {
+        if (deploymentConfig.extensionConfigs[extensionIndex].msgValue != 0 || msg.value != 0) {
             revert IClankerExtension.InvalidMsgValue();
         }
 
@@ -45,6 +47,11 @@ contract ClankerVault is ReentrancyGuard, IClankerVault {
         // check the vault percentage is not zero
         if (deploymentConfig.extensionConfigs[extensionIndex].extensionBps == 0) {
             revert InvalidVaultBps();
+        }
+
+        // check that minimum lockup duration is met
+        if (vaultData.lockupDuration < MIN_LOCKUP_DURATION) {
+            revert VaultLockupDurationTooShort();
         }
 
         // check the admin is set
@@ -69,14 +76,13 @@ contract ClankerVault is ReentrancyGuard, IClankerVault {
             revert TransferFailed();
         }
 
-        emit AllocationCreated(
-            token,
-            vaultData.admin,
-            vaultData.lockupDuration,
-            vaultData.vestingDuration,
-            lockupEndTime,
-            deploymentConfig.extensionConfigs[extensionIndex].extensionBps
-        );
+        emit AllocationCreated({
+            token: token,
+            admin: vaultData.admin,
+            supply: extensionSupply,
+            lockupDuration: vaultData.lockupDuration,
+            vestingDuration: vaultData.vestingDuration
+        });
     }
 
     function editAllocationAdmin(address token, address newAdmin) external {

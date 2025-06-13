@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.28;
 
-import {IClanker} from "./interfaces/IClanker.sol";
-import {IClankerFeeLocker} from "./interfaces/IClankerFeeLocker.sol";
-import {IClankerLpLocker} from "./interfaces/IClankerLpLocker.sol";
+import {IClanker} from "../interfaces/IClanker.sol";
+import {IClankerFeeLocker} from "../interfaces/IClankerFeeLocker.sol";
+import {IClankerLpLocker} from "../interfaces/IClankerLpLocker.sol";
 import {IClankerLpLockerMultiple} from "./interfaces/IClankerLpLockerMultiple.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -32,7 +33,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
     IClankerFeeLocker public immutable feeLocker;
     address public immutable factory;
 
-    mapping(address token => TokenRewardInfo tokenRewardInfo) public tokenRewards;
+    mapping(address token => TokenRewardInfo tokenRewardInfo) internal _tokenRewards;
 
     constructor(
         address owner_,
@@ -54,6 +55,10 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
         _;
     }
 
+    function tokenRewards(address token) external view returns (TokenRewardInfo memory) {
+        return _tokenRewards[token];
+    }
+
     function placeLiquidity(
         IClanker.LockerConfig memory lockerConfig,
         IClanker.PoolConfig memory poolConfig,
@@ -62,7 +67,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
         address token
     ) external onlyFactory nonReentrant returns (uint256 positionId) {
         // ensure that we don't already have a reward for this token
-        if (tokenRewards[token].positionId != 0) {
+        if (_tokenRewards[token].positionId != 0) {
             revert TokenAlreadyHasRewards();
         }
 
@@ -124,11 +129,12 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
 
         // store the reward info
         tokenRewardInfo.positionId = positionId;
-        tokenRewards[token] = tokenRewardInfo;
+        _tokenRewards[token] = tokenRewardInfo;
 
         emit TokenRewardAdded({
             token: tokenRewardInfo.token,
             poolKey: tokenRewardInfo.poolKey,
+            poolSupply: poolSupply,
             positionId: tokenRewardInfo.positionId,
             numPositions: tokenRewardInfo.numPositions,
             rewardBps: tokenRewardInfo.rewardBps,
@@ -200,7 +206,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
         bytes memory actions;
 
         int24 startingTick =
-            token0IsClanker ? lockerConfig.tickLower[0] : -lockerConfig.tickLower[0];
+            token0IsClanker ? poolConfig.tickIfToken0IsClanker : -poolConfig.tickIfToken0IsClanker;
 
         for (uint256 i = 0; i < lockerConfig.tickLower.length; i++) {
             // add mint action
@@ -269,7 +275,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
     // Collect rewards for a token
     function _collectRewards(address token, bool withoutUnlock) internal {
         // get the reward info
-        TokenRewardInfo memory tokenRewardInfo = tokenRewards[token];
+        TokenRewardInfo memory tokenRewardInfo = _tokenRewards[token];
 
         // collect the rewards
         (uint256 amount0, uint256 amount1) = _bringFeesIntoContract(
@@ -299,14 +305,18 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
 
         // distribute the rewards
         for (uint256 i = 0; i < tokenRewardInfo.rewardBps.length; i++) {
-            rewardToken0.approve(address(feeLocker), rewards0[i]);
-            rewardToken1.approve(address(feeLocker), rewards1[i]);
-            feeLocker.storeFees(
-                tokenRewardInfo.rewardRecipients[i], address(rewardToken0), rewards0[i]
-            );
-            feeLocker.storeFees(
-                tokenRewardInfo.rewardRecipients[i], address(rewardToken1), rewards1[i]
-            );
+            if (rewards0[i] > 0) {
+                SafeERC20.forceApprove(rewardToken0, address(feeLocker), rewards0[i]);
+                feeLocker.storeFees(
+                    tokenRewardInfo.rewardRecipients[i], address(rewardToken0), rewards0[i]
+                );
+            }
+            if (rewards1[i] > 0) {
+                SafeERC20.forceApprove(rewardToken1, address(feeLocker), rewards1[i]);
+                feeLocker.storeFees(
+                    tokenRewardInfo.rewardRecipients[i], address(rewardToken1), rewards1[i]
+                );
+            }
         }
 
         // emit the claim event
@@ -354,7 +364,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
     function updateRewardRecipient(address token, uint256 rewardIndex, address newRecipient)
         external
     {
-        TokenRewardInfo storage tokenRewardInfo = tokenRewards[token];
+        TokenRewardInfo storage tokenRewardInfo = _tokenRewards[token];
 
         // Only admin can replace the reward recipient
         if (msg.sender != tokenRewardInfo.rewardAdmins[rewardIndex]) {
@@ -370,7 +380,7 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
 
     // Replace the reward admin
     function updateRewardAdmin(address token, uint256 rewardIndex, address newAdmin) external {
-        TokenRewardInfo storage tokenRewardInfo = tokenRewards[token];
+        TokenRewardInfo storage tokenRewardInfo = _tokenRewards[token];
 
         // Only admin can replace the reward recipient
         if (msg.sender != tokenRewardInfo.rewardAdmins[rewardIndex]) {
@@ -399,14 +409,14 @@ contract ClankerLpLockerMultiple is IClankerLpLockerMultiple, ReentrancyGuard, O
     }
 
     // Withdraw ETH from the contract
-    function withdrawETH(address recipient) public onlyOwner {
+    function withdrawETH(address recipient) public onlyOwner nonReentrant {
         payable(recipient).transfer(address(this).balance);
     }
 
     // Withdraw ERC20 tokens from the contract
-    function withdrawERC20(address token, address recipient) public onlyOwner {
+    function withdrawERC20(address token, address recipient) public onlyOwner nonReentrant {
         IERC20 token_ = IERC20(token);
-        token_.transfer(recipient, token_.balanceOf(address(this)));
+        SafeERC20.safeTransfer(token_, recipient, token_.balanceOf(address(this)));
     }
 
     function supportsInterface(bytes4 interfaceId) external pure returns (bool) {

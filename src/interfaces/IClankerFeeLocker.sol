@@ -4,14 +4,15 @@ pragma solidity ^0.8.28;
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
 interface IClankerFeeLocker {
-    error ClaimAmountTooHigh();
-    error InvalidRecipient();
     error NoFeesToClaim();
-    error TransferFailed();
     error Unauthorized();
 
     event StoreTokens(
-        address indexed feeOwner, address indexed token, uint256 balance, uint256 amount
+        address indexed sender,
+        address indexed feeOwner,
+        address indexed token,
+        uint256 balance,
+        uint256 amount
     );
     event ClaimTokensPermissioned(
         address indexed feeOwner, address indexed token, address recipient, uint256 amountClaimed

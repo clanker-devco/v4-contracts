@@ -26,14 +26,14 @@ interface IClankerVault is IClankerExtension {
     error InvalidVaultAdmin();
     error AllocationAlreadyExists();
     error TransferFailed();
+    error VaultLockupDurationTooShort();
 
     event AllocationCreated(
         address indexed token,
         address indexed admin,
+        uint256 supply,
         uint256 lockupDuration,
-        uint256 vestingDuration,
-        uint256 unlockTime,
-        uint16 extensionBps
+        uint256 vestingDuration
     );
 
     event AllocationAdminUpdated(

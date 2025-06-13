@@ -14,6 +14,7 @@ import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionMa
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+import {IClankerHook} from "../interfaces/IClankerHook.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
 import {LPFeeLibrary} from "@uniswap/v4-core/src/libraries/LPFeeLibrary.sol";
@@ -32,24 +33,21 @@ import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
 import {LiquidityAmounts} from "@uniswap/v4-periphery/src/libraries/LiquidityAmounts.sol";
 import {BaseHook} from "@uniswap/v4-periphery/src/utils/BaseHook.sol";
 
-import {IClankerHook} from "../interfaces/IClankerHook.sol";
-
 abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
     using TickMath for int24;
     using BeforeSwapDeltaLibrary for BeforeSwapDelta;
 
-    uint24 public constant MAX_LP_FEE = 800_000; // LP fee capped at 80% to prevent LP + Protocol fee from exceeding 100%
+    uint24 public constant MAX_LP_FEE = 300_000; // LP fee capped at 30%
     uint256 public constant PROTOCOL_FEE_NUMERATOR = 200_000; // 20% of the imposed LP fee
     int128 public constant FEE_DENOMINATOR = 1_000_000; // Uniswap 100% fee
 
     uint24 public protocolFee;
 
-    IClankerLpLocker public immutable locker;
     address public immutable factory;
     address public immutable weth;
 
     mapping(PoolId => bool) internal clankerIsToken0;
-    mapping(PoolId => bool) internal claimLpFees;
+    mapping(PoolId => address) internal locker;
 
     // mev module pool variables
     uint256 public constant MAX_MEV_MODULE_DELAY = 2 minutes;
@@ -64,12 +62,11 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
         _;
     }
 
-    constructor(address _poolManager, address _factory, address _locker, address _weth)
+    constructor(address _poolManager, address _factory, address _weth)
         BaseHook(IPoolManager(_poolManager))
         Ownable(msg.sender)
     {
         factory = _factory;
-        locker = IClankerLpLocker(_locker);
         weth = _weth;
     }
 
@@ -97,6 +94,7 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
         address pairedToken,
         int24 tickIfToken0IsClanker,
         int24 tickSpacing,
+        address _locker,
         address _mevModule,
         bytes calldata poolData
     ) public onlyFactory returns (PoolKey memory) {
@@ -105,14 +103,20 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
             _initializePool(clanker, pairedToken, tickIfToken0IsClanker, tickSpacing, poolData);
 
         // set the locker config
-        claimLpFees[poolKey.toId()] = true;
+        locker[poolKey.toId()] = _locker;
 
         // set the mev module
         mevModule[poolKey.toId()] = _mevModule;
 
-        emit PoolCreatedFactory(
-            pairedToken, clanker, poolKey.toId(), tickIfToken0IsClanker, tickSpacing, _mevModule
-        );
+        emit PoolCreatedFactory({
+            pairedToken: pairedToken,
+            clanker: clanker,
+            poolId: poolKey.toId(),
+            tickIfToken0IsClanker: tickIfToken0IsClanker,
+            tickSpacing: tickSpacing,
+            locker: _locker,
+            mevModule: _mevModule
+        });
 
         return poolKey;
     }
@@ -229,7 +233,7 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
 
     function _lpLockerFeeClaim(PoolKey calldata poolKey) internal {
         // if this wasn't initialized to claim fees, skip the claim
-        if (!claimLpFees[poolKey.toId()]) {
+        if (locker[poolKey.toId()] == address(0)) {
             return;
         }
 
@@ -239,7 +243,7 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
             : Currency.unwrap(poolKey.currency1);
 
         // trigger the fee claim
-        locker.collectRewardsWithoutUnlock(token);
+        IClankerLpLocker(locker[poolKey.toId()]).collectRewardsWithoutUnlock(token);
     }
 
     function _hookFeeClaim(PoolKey calldata poolKey) internal {
@@ -249,6 +253,10 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
 
         // get the fees stored from the previous swap in the pool manager
         uint256 fee = poolManager.balanceOf(address(this), feeCurrency.toId());
+
+        if (fee == 0) {
+            return;
+        }
 
         // burn the fee
         poolManager.burn(address(this), feeCurrency.toId(), fee);
@@ -290,10 +298,9 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
             // since we're taking the protocol fee before the LP swap, we want to
             // take a slightly smaller amount to keep the taken LP/protocol fee at the 20% ratio,
             // this also helps us match the ExactOutput swappingForClanker scenario
-            protocolFee =
-                uint24(uint256(protocolFee) * (10_000 - (uint256(protocolFee) / 100)) / 10_000);
+            uint128 scaledProtocolFee = uint128(protocolFee) * 1e18 / (1_000_000 + protocolFee);
+            int128 fee = int128(swapParams.amountSpecified * -int128(scaledProtocolFee) / 1e18);
 
-            int128 fee = int128(swapParams.amountSpecified * -int24(protocolFee)) / FEE_DENOMINATOR;
             delta = toBeforeSwapDelta(fee, 0);
             poolManager.mint(
                 address(this),
@@ -309,10 +316,8 @@ abstract contract ClankerHook is BaseHook, Ownable, IClankerHook {
         if (!isExactInput && !swappingForClanker) {
             // we increase the protocol fee here because we want to better match
             // the ExactOutput !swappingForClanker scenario
-            protocolFee =
-                uint24(uint256(protocolFee) * (10_000 + (uint256(protocolFee) / 100)) / 10_000);
-
-            int128 fee = int128(swapParams.amountSpecified * int24(protocolFee)) / FEE_DENOMINATOR;
+            uint128 scaledProtocolFee = uint128(protocolFee) * 1e18 / (1_000_000 - protocolFee);
+            int128 fee = int128(swapParams.amountSpecified * int128(scaledProtocolFee) / 1e18);
             delta = toBeforeSwapDelta(fee, 0);
 
             poolManager.mint(

@@ -5,6 +5,8 @@ import {IClankerFeeLocker} from "./interfaces/IClankerFeeLocker.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract ClankerFeeLocker is IClankerFeeLocker, ReentrancyGuard, Ownable {
@@ -21,11 +23,15 @@ contract ClankerFeeLocker is IClankerFeeLocker, ReentrancyGuard, Ownable {
     function storeFees(address feeOwner, address token, uint256 amount) external nonReentrant {
         if (!allowedDepositors[msg.sender]) revert Unauthorized();
 
-        bool success = IERC20(token).transferFrom(msg.sender, address(this), amount);
-        if (!success) revert TransferFailed();
+        // use balance deltas to support fee on transfer and weird tokens
+        uint256 balanceBefore = IERC20(token).balanceOf(address(this));
+        SafeERC20.safeTransferFrom(IERC20(token), msg.sender, address(this), amount);
+        uint256 balanceAfter = IERC20(token).balanceOf(address(this));
 
-        feesToClaim[feeOwner][token] += amount;
-        emit StoreTokens(feeOwner, token, feesToClaim[feeOwner][token], amount);
+        uint256 receivedAmount = balanceAfter - balanceBefore;
+
+        feesToClaim[feeOwner][token] += receivedAmount;
+        emit StoreTokens(msg.sender, feeOwner, token, feesToClaim[feeOwner][token], amount);
     }
 
     // helper function to check available fees
@@ -42,8 +48,7 @@ contract ClankerFeeLocker is IClankerFeeLocker, ReentrancyGuard, Ownable {
         feesToClaim[feeOwner][token] = 0;
 
         // transfer funds
-        bool success = IERC20(token).transfer(feeOwner, balance);
-        if (!success) revert TransferFailed();
+        SafeERC20.safeTransfer(IERC20(token), feeOwner, balance);
 
         emit ClaimTokens(feeOwner, token, balance);
     }

@@ -6,9 +6,11 @@ Clanker is an autonomous agent for deploying tokens. Currently, users may reques
 
 Documentation for the v4.0 contracts can be found [here](specs/v4_0_0.md) and our general docs can be found [here](https://clanker.gitbook.io/clanker-documentation) (note: not updated for v4.0 yet).
 
+For a typescript sdk that interfaces with the clanker contracts, please see our companion repo [clanker-sdk](https://github.com/clanker-devco/clanker-sdk).
+
 
 ## Fee structure and rewards
-As Clanker deploys tokens, it also creates dynamic fee Uniswap V4 pools using our custom hooks. As each token is traded, the protocol takes a protocol fee that is an additional 20% on top of the LP's fee. All user LP fees can be collected on the `ClankerFeeLocker` contract and can be managed on the `ClankerLpLocker` contract.
+As Clanker deploys tokens, it also creates dynamic fee Uniswap V4 pools using our custom hooks. Users are able to choose between static or dynamic fee pools. All user LP fees can be collected on the `ClankerFeeLocker` contract and can be managed on the `ClankerLpLocker` contract.
 
 ## Deployed Contracts
 

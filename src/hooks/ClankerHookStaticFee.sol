@@ -4,18 +4,16 @@ pragma solidity ^0.8.28;
 import {ClankerHook} from "./ClankerHook.sol";
 import {IClankerHookStaticFee} from "./interfaces/IClankerHookStaticFee.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
-import {BeforeSwapDelta} from "@uniswap/v4-core/src/types/BeforeSwapDelta.sol";
 
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {console} from "forge-std/console.sol";
 
 contract ClankerHookStaticFee is ClankerHook, IClankerHookStaticFee {
     mapping(PoolId => uint24) public clankerFee;
     mapping(PoolId => uint24) public pairedFee;
 
-    constructor(address _poolManager, address _factory, address _locker, address _weth)
-        ClankerHook(_poolManager, _factory, _locker, _weth)
+    constructor(address _poolManager, address _factory, address _weth)
+        ClankerHook(_poolManager, _factory, _weth)
     {}
 
     function _initializePoolData(PoolKey memory poolKey, bytes memory poolData) internal override {

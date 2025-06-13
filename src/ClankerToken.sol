@@ -15,40 +15,36 @@ import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Vo
 
 import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
 
-////////////////////////////////////////////////////////////////////////////////////////////
-//                                                                                        //
-//                                                                                        //
-//                                                 /$$      /$$                           //
-//                                                | $$     | $/                           //
-//                              /$$$$$$   /$$$$$$ | $$$$$$$|_/                            //
-//                             /$$__  $$ /$$__  $$| $$__  $$                              //
-//                            | $$  \ $$| $$  \ $$| $$  \ $$                              //
-//                            | $$  | $$| $$  | $$| $$  | $$                              //
-//                            |  $$$$$$/|  $$$$$$/| $$  | $$                              //
-//                             \______/  \______/ |__/  |__/                              //
-//                                                                                        //
-//                                                                                        //
-//                                                                                        //
-//               /$$                     /$$                   /$$             /$$        //
-//              | $$                    | $$                  | $$            | $$        //
-//      /$$$$$$$| $$  /$$$$$$  /$$$$$$$ | $$   /$$        /$$$$$$$  /$$$$$$  /$$$$$$      //
-//     /$$_____/| $$ |____  $$| $$__  $$| $$  /$$/       /$$__  $$ |____  $$|_  $$_/      //
-//    | $$      | $$  /$$$$$$$| $$  \ $$| $$$$$$/       | $$  | $$  /$$$$$$$  | $$        //
-//    | $$      | $$ /$$__  $$| $$  | $$| $$_  $$       | $$  | $$ /$$__  $$  | $$ /$$    //
-//    |  $$$$$$$| $$|  $$$$$$$| $$  | $$| $$ \  $$      |  $$$$$$$|  $$$$$$$  |  $$$$/    //
-//     \_______/|__/ \_______/|__/  |__/|__/  \__/       \_______/ \_______/   \___/      //
-//                                                                                        //
-//                                                                                        //
-//                                                                                        //
-//                                                                                        //
-//                                                                                        //
-////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
+/ .. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \
+\ \/\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ \/ /
+ \/ /`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'\/ / 
+ / /\  ````````````````````````````````````````````````````````````````````````````````````  / /\ 
+/ /\ \ ```````````````````````````````````````````````````````````````````````````````````` / /\ \
+\ \/ / ```````::::::::``:::````````````:::`````::::````:::`:::````:::`::::::::::`:::::::::` \ \/ /
+ \/ /  `````:+:````:+:`:+:``````````:+:`:+:```:+:+:```:+:`:+:```:+:``:+:````````:+:````:+:`  \/ / 
+ / /\  ````+:+````````+:+`````````+:+```+:+``:+:+:+``+:+`+:+``+:+```+:+````````+:+````+:+``  / /\ 
+/ /\ \ ```+#+````````+#+````````+#++:++#++:`+#+`+:+`+#+`+#++:++````+#++:++#```+#++:++#:```` / /\ \
+\ \/ / ``+#+````````+#+````````+#+`````+#+`+#+``+#+#+#`+#+``+#+```+#+````````+#+````+#+```` \ \/ /
+ \/ /  `#+#````#+#`#+#````````#+#`````#+#`#+#```#+#+#`#+#```#+#``#+#````````#+#````#+#`````  \/ / 
+ / /\  `########``##########`###`````###`###````####`###````###`##########`###````###``````  / /\ 
+/ /\ \ ```````````````````````````````````````````````````````````````````````````````````` / /\ \
+\ \/ / ```````````````````````````````````````````````````````````````````````````````````` \ \/ /
+ \/ /  ````````````````````````````````````````````````````````````````````````````````````  \/ / 
+ / /\.--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--./ /\ 
+/ /\ \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \.. \/\ \
+\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `'\ `' /
+ `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
+*/
 
 contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802 {
     error NotAdmin();
+    error NotOriginalAdmin();
     error AlreadyVerified();
 
-    address private immutable _admin;
+    address private immutable _originalAdmin;
+    address private _admin;
     string private _metadata;
     string private _context;
     string private _image;
@@ -58,6 +54,7 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
     event Verified(address indexed admin, address indexed token);
     event UpdateImage(string image);
     event UpdateMetadata(string metadata);
+    event UpdateAdmin(address indexed oldAdmin, address indexed newAdmin);
 
     constructor(
         string memory name_,
@@ -69,6 +66,7 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
         string memory context_,
         uint256 initialSupplyChainId_
     ) ERC20(name_, symbol_) ERC20Permit(name_) {
+        _originalAdmin = admin_;
         _admin = admin_;
         _image = image_;
         _metadata = metadata_;
@@ -78,6 +76,15 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
         if (block.chainid == initialSupplyChainId_) {
             _mint(msg.sender, maxSupply_);
         }
+    }
+
+    function updateAdmin(address admin_) external {
+        if (msg.sender != _admin) {
+            revert NotAdmin();
+        }
+        address oldAdmin = _admin;
+        _admin = admin_;
+        emit UpdateAdmin(oldAdmin, admin_);
     }
 
     function updateImage(string memory image_) external {
@@ -104,8 +111,8 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
     }
 
     function verify() external {
-        if (msg.sender != _admin) {
-            revert NotAdmin();
+        if (msg.sender != _originalAdmin) {
+            revert NotOriginalAdmin();
         }
         if (_verified) {
             revert AlreadyVerified();
@@ -126,6 +133,10 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
         return _admin;
     }
 
+    function originalAdmin() external view returns (address) {
+        return _originalAdmin;
+    }
+
     function imageUrl() external view returns (string memory) {
         return _image;
     }
@@ -136,6 +147,21 @@ contract ClankerToken is ERC20, ERC20Permit, ERC20Votes, ERC20Burnable, IERC7802
 
     function context() external view returns (string memory) {
         return _context;
+    }
+
+    // convenience function to get all data in one call
+    function allData()
+        external
+        view
+        returns (
+            address originalAdmin,
+            address admin,
+            string memory image,
+            string memory metadata,
+            string memory context
+        )
+    {
+        return (_originalAdmin, _admin, _image, _metadata, _context);
     }
 
     function crosschainMint(address _to, uint256 _amount) external {

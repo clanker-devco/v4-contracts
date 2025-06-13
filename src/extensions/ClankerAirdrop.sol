@@ -18,6 +18,8 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
     address public immutable factory;
     mapping(address token => Airdrop airdrop) public airdrops;
 
+    uint256 public constant MIN_LOCKUP_DURATION = 1 days;
+
     modifier onlyFactory() {
         if (msg.sender != factory) revert Unauthorized();
         _;
@@ -58,6 +60,11 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
             revert InvalidAirdropPercentage();
         }
 
+        // check that minimum lockup duration is met
+        if (airdropData.lockupDuration < MIN_LOCKUP_DURATION) {
+            revert AirdropLockupDurationTooShort();
+        }
+
         // set the lockup and vesting end times
         airdrops[token].lockupEndTime = block.timestamp + airdropData.lockupDuration;
         airdrops[token].vestingEndTime =
@@ -71,7 +78,13 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
         // pull in token
         IERC20(token).transferFrom(msg.sender, address(this), extensionSupply);
 
-        emit AirdropCreated(token, airdropData.merkleRoot, extensionSupply);
+        emit AirdropCreated({
+            token: token,
+            merkleRoot: airdropData.merkleRoot,
+            supply: extensionSupply,
+            lockupDuration: airdropData.lockupDuration,
+            vestingDuration: airdropData.vestingDuration
+        });
     }
 
     function claim(
@@ -81,6 +94,11 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
         bytes32[] calldata proof
     ) external nonReentrant {
         Airdrop storage airdrop = airdrops[token];
+
+        // check that the airdrop exists
+        if (airdrop.merkleRoot == bytes32(0)) {
+            revert AirdropNotCreated();
+        }
 
         // check that the lockup period has passed
         if (block.timestamp < airdrop.lockupEndTime) {
@@ -102,7 +120,7 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
             !MerkleProof.verifyCalldata(
                 proof,
                 airdrop.merkleRoot,
-                keccak256(bytes.concat(keccak256(abi.encode(recipient, token, allocatedAmount))))
+                keccak256(bytes.concat(keccak256(abi.encode(recipient, allocatedAmount))))
             )
         ) {
             revert InvalidProof();
@@ -148,6 +166,10 @@ contract ClankerAirdrop is ReentrancyGuard, IClankerAirdrop {
         view
         returns (uint256)
     {
+        if (airdrops[token].merkleRoot == bytes32(0)) {
+            revert AirdropNotCreated();
+        }
+
         if (block.timestamp < airdrops[token].lockupEndTime) return 0;
 
         return _getAmountClaimable(token, allocatedAmount, airdrops[token].amountClaimed[recipient]);

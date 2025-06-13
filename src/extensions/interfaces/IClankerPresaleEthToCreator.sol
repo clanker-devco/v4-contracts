@@ -28,6 +28,7 @@ interface IClankerPresaleEthToCreator is IClankerExtension {
     }
 
     enum PresaleStatus {
+        NotCreated,
         Active,
         SuccessfulMinimumHit,
         SuccessfulMaximumHit,
@@ -57,6 +58,7 @@ interface IClankerPresaleEthToCreator is IClankerExtension {
     error PresaleNotClaimable();
     error PresaleLockupNotPassed();
     error EthTransferFailed();
+    error NoWithdrawFeeAccumulated();
 
     function getPresale(uint256 _presaleId) external view returns (Presale memory);
 }

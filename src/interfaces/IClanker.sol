@@ -25,6 +25,7 @@ interface IClanker is IOwnerAdmins {
     }
 
     struct LockerConfig {
+        address locker;
         // reward info
         address[] rewardAdmins;
         address[] rewardRecipients;
@@ -33,6 +34,7 @@ interface IClanker is IOwnerAdmins {
         int24[] tickLower;
         int24[] tickUpper;
         uint16[] positionBps;
+        bytes lockerData;
     }
 
     struct ExtensionConfig {
@@ -58,11 +60,9 @@ interface IClanker is IOwnerAdmins {
     struct DeploymentInfo {
         address token;
         address hook;
+        address locker;
         address[] extensions;
     }
-
-    /// @notice When the clanker is already initialized
-    error AlreadyInitialized();
 
     /// @notice When the factory is deprecated
     error Deprecated();
@@ -83,6 +83,8 @@ interface IClanker is IOwnerAdmins {
 
     /// @notice When the hook is not enabled
     error HookNotEnabled();
+    /// @notice When the locker is not enabled
+    error LockerNotEnabled();
     /// @notice When the extension contract is not enabled
     error ExtensionNotEnabled();
     /// @notice When the mev module is not enabled
@@ -97,6 +99,8 @@ interface IClanker is IOwnerAdmins {
 
     /// @notice When the mev module is invalid
     error InvalidMevModule();
+    /// @notice When the team fee recipient is not set
+    error TeamFeeRecipientNotSet();
 
     event TokenCreated(
         address msgSender,
@@ -111,6 +115,7 @@ interface IClanker is IOwnerAdmins {
         address poolHook,
         PoolId poolId,
         address pairedToken,
+        address locker,
         address mevModule,
         uint256 extensionsSupply,
         address[] extensions
@@ -121,6 +126,7 @@ interface IClanker is IOwnerAdmins {
     event SetExtension(address extension, bool enabled);
     event SetHook(address hook, bool enabled);
     event SetMevModule(address mevModule, bool enabled);
+    event SetLocker(address locker, address hook, bool enabled);
 
     event SetTeamFeeRecipient(address oldTeamFeeRecipient, address newTeamFeeRecipient);
     event ClaimTeamFees(address indexed token, address indexed recipient, uint256 amount);
@@ -135,4 +141,6 @@ interface IClanker is IOwnerAdmins {
         external
         payable
         returns (address tokenAddress);
+
+    function tokenDeploymentInfo(address token) external view returns (DeploymentInfo memory);
 }

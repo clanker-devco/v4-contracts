@@ -13,4 +13,7 @@ interface IClankerHookStaticFee {
         uint24 clankerFee;
         uint24 pairedFee;
     }
+
+    function clankerFee(PoolId poolId) external view returns (uint24);
+    function pairedFee(PoolId poolId) external view returns (uint24);
 }

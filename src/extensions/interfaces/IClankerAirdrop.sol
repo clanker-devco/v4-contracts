@@ -29,8 +29,16 @@ interface IClankerAirdrop is IClankerExtension {
     error ZeroToClaim();
     error AirdropNotUnlocked();
     error AirdropAlreadyExists();
+    error AirdropLockupDurationTooShort();
+    error AirdropNotCreated();
 
-    event AirdropCreated(address indexed token, bytes32 merkleRoot, uint256 supply);
+    event AirdropCreated(
+        address indexed token,
+        bytes32 merkleRoot,
+        uint256 supply,
+        uint256 lockupDuration,
+        uint256 vestingDuration
+    );
     event AirdropClaimed(
         address indexed token,
         address indexed user,

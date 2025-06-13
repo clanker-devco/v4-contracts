@@ -27,7 +27,19 @@ interface IClankerHookDynamicFee {
         uint256 referenceTickFilterPeriod;
         uint256 resetPeriod;
         int24 resetTickFilter;
-        uint24 feeControlNumerator;
+        uint256 feeControlNumerator;
         uint24 decayFilterBps;
     }
+
+    struct PoolDynamicFeeVars {
+        int24 referenceTick;
+        int24 resetTick;
+        uint256 resetTickTimestamp;
+        uint256 lastSwapTimestamp;
+        uint24 appliedVR; // applied volatility reference
+        uint24 prevVA; // swap's previous volatility accumulation, used to generate the volatility reference
+    }
+
+    function poolConfigVars(PoolId poolId) external view returns (PoolDynamicConfigVars memory);
+    function poolFeeVars(PoolId poolId) external view returns (PoolDynamicFeeVars memory);
 }
