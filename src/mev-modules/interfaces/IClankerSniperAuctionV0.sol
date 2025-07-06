@@ -27,12 +27,19 @@ interface IClankerSniperAuctionV0 is IClankerMevModule {
     event AuctionRewardsTransferred(
         PoolId indexed poolId, uint256 lpPayment, uint256 factoryPayment
     );
+    event SetBlocksBetweenDeploymentAndFirstAuction(
+        uint256 oldBlocksBetweenDeploymentAndFirstAuction,
+        uint256 newBlocksBetweenDeploymentAndFirstAuction
+    );
+    event SetBlocksBetweenAuction(uint256 oldBlocksBetweenAuction, uint256 newBlocksBetweenAuction);
+    event SetMaxRounds(uint256 oldMaxRounds, uint256 newMaxRounds);
+    event SetPaymentPerGasUnit(uint256 oldPaymentPerGasUnit, uint256 newPaymentPerGasUnit);
 
     function gasPeg(PoolId poolId) external view returns (uint256);
     function round(PoolId poolId) external view returns (uint256);
     function nextAuctionBlock(PoolId poolId) external view returns (uint256);
 
-    function PAYMENT_PER_GAS_UNIT() external view returns (uint256);
-    function MAX_ROUNDS() external view returns (uint256);
-    function BLOCKS_BETWEEN_AUCTION() external view returns (uint256);
+    function paymentPerGasUnit() external view returns (uint256);
+    function maxRounds() external view returns (uint256);
+    function blocksBetweenAuction() external view returns (uint256);
 }

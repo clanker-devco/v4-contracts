@@ -1,6 +1,6 @@
 # Clanker's Sniper Auction V0
 
-**Clanker's Sniper Auction V0** is a MEV module that allows snipers to bid for the right to execute the next swap on a freshly deployed pool. A maximum of 10 auctions run per pool, with one auction occurring every 3 blocks. If an auction block passes without any valid bids, the auction is disabled and normal swaps can execute. The original design doc can be found [here](https://hackmd.io/@lobstermindset/rkwlyMpkgl).
+**Clanker's Sniper Auction V0** is a MEV module that allows snipers to bid for the right to execute the next swap on a freshly deployed pool. At deployment, a maximum of 5 auctions can run per pool, with one auction occurring every 2 blocks. If an auction block passes without any valid bids, the auction is disabled and normal swaps can execute. The original design doc can be found [here](https://hackmd.io/@lobstermindset/rkwlyMpkgl). 
 
 The following contracts are a part of this setup:
 - [`ClankerSniperAuctionV0.sol`](../src/mev-modules/ClankerSniperAuctionV0.sol): `IClankerMevModule` instance running Clanker's first version of a sniper auction.
@@ -12,16 +12,30 @@ The auction leverages the fact that Base uses priority ordering, meaning transac
 
 The auction payments are split between the token's reward recipients and the Clanker factory at a 80/20 split.
 
+The following auction configuration variables are of importance to snipers:
+- `blocksBetweenDeploymentAndFirstAuction`: The number of blocks between the pool's deployment and the first auction.
+- `blocksBetweenAuction`: The number of blocks between subsequent auctions.
+- `maxRounds`: The maximum number of auctions that can run per pool.
+- `paymentPerGasUnit`: The amount of WETH to pay per gas unit above the gas peg for an auction.
+
+All of these variables are queryable on the `ClankerSniperAuctionV0` contract and can be changed by the Clanker team with advanced notice. 
+
+The following auction state variables are of importance to snipers and are queryable per PoolId:
+- `round`: The current auction round.
+- `nextAuctionBlock`: The block number at which the next auction will accept bids at.
+- `gasPeg`: The gas price which the next round of the auction will start at.
+
 ## Example Auction Iteration
 
-A pool is deployed in block 1 with a base fee of 10 gwei. The first auction round occurs in block 4 with a starting auction gas price of 14 gwei. Three snipers attempt to snipe with the following configurations:
+A pool is deployed in block 1 with a base fee of 10 gwei. The first auction round occurs in block 3 with a starting auction gas price of 12 gwei. Three snipers attempt to snipe with the following configurations:
 
-- **Sniper A** sets their transaction gas price to 15 gwei, approves a WETH payment of 0.0001 ether, and lands in block 4
-- **Sniper B** sets their transaction gas price to 17 gwei, approves a WETH payment of 0.0003 ether, and lands in block 4  
-- **Sniper C** sets their transaction gas price to 19 gwei, approves a WETH payment of 0.0005 ether, and lands in block 5
+- **Sniper A** sets their transaction gas price to 13 gwei, approves a WETH payment of 0.0001 ether, and lands in block 3
+- **Sniper B** sets their transaction gas price to 15 gwei, approves a WETH payment of 0.0003 ether, and lands in block 3  
+- **Sniper C** sets their transaction gas price to 17 gwei, approves a WETH payment of 0.0005 ether, and lands in block 4
 
-**Result:** Sniper B wins since Sniper C landed in the wrong block. The auction module uses block 4's actual gas price of 11 gwei to set the starting gas price for round 2 to 15 gwei, with bids being accepted in block 7.
+**Result:** Sniper B wins since Sniper C landed in the wrong block. The auction module uses block 3's actual gas price of 11 gwei to set the starting gas price for round 2 to 13 gwei, with bids being accepted in block 5.
 
+Note: the first auction parameters set by the Clanker team have the blocks between the first auction and deployment and subsequent auctions set to 2. These can be changed to different values after we get more data on the auction's performance.
 
 ## ClankerSniperUtilV0 Contract
 
@@ -78,4 +92,8 @@ sniperUtil.bidInAuction{value: bidAmount}(swapParams, round);
 
 ## Disclaimer
 
-Clanker reserves the right to upgrade to other auction versions depending on the usage of V0. We will give advanced warning of upgrades, but we may toggle how many blocks between auctions are ran and the payment multiplier.
+Clanker reserves the right to upgrade to other auction versions depending on the usage of V0 and to change V0's configuration. We will give advanced warning of upgrades, but we may toggle how many blocks between auctions are ran and the payment multiplier.
+
+## Warning on Approving `ClankerSniperAuctionV0` to spend WETH
+
+We do NOT recommend approving `ClankerSniperAuctionV0` to spend WETH unless you have an auxiliary contract handling the approval that reverts if the bid is not won. For example, if an EOA approves the auction contract to spend WETH, anyone can spend the EOA's WETH by passing in the EOA's address as the `auctionData` parameter to the `ClankerSniperAuctionV0::beforeSwap` function. We've provided the `ClankerSniperUtilV0` contract as an example of how to handle this.

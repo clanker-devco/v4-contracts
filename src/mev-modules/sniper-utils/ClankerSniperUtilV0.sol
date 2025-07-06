@@ -83,13 +83,12 @@ contract ClankerSniperUtilV0 is ReentrancyGuard {
         returns (uint256 txGasPrice)
     {
         // bidding amount must be in units of gas difference
-        if (desiredBidAmount % clankerSniperAuction.PAYMENT_PER_GAS_UNIT() != 0) {
+        if (desiredBidAmount % clankerSniperAuction.paymentPerGasUnit() != 0) {
             revert InvalidBidAmount();
         }
 
         // calculate the gas price for the bid amount
-        txGasPrice =
-            auctionGasPeg + (desiredBidAmount / clankerSniperAuction.PAYMENT_PER_GAS_UNIT());
+        txGasPrice = auctionGasPeg + (desiredBidAmount / clankerSniperAuction.paymentPerGasUnit());
     }
 
     // basic util function to show snipers how to bid in the auction
@@ -101,9 +100,8 @@ contract ClankerSniperUtilV0 is ReentrancyGuard {
         PoolId poolId = swapParams.poolKey.toId();
 
         // check that the intended round is being bid in
-        if (
-            round != clankerSniperAuction.round(poolId) || round > clankerSniperAuction.MAX_ROUNDS()
-        ) {
+        if (round != clankerSniperAuction.round(poolId) || round > clankerSniperAuction.maxRounds())
+        {
             revert InvalidRound();
         }
 

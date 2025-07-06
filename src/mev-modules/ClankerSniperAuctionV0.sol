@@ -15,7 +15,7 @@ import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /*
  .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
@@ -40,19 +40,24 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
  `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
 */
 
-contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
+contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Ownable {
     // gas peg and block number for a pool's auction
     mapping(PoolId => uint256 gasPeg) public gasPeg;
     mapping(PoolId => uint256 nextAuctionBlock) public nextAuctionBlock;
     // round of the auction
     mapping(PoolId => uint256 round) public round;
 
-    // max rounds of auction, needs to run less than 2 minutes total
-    uint256 public constant MAX_ROUNDS = 10;
-    // blocks between auction
-    uint256 public constant BLOCKS_BETWEEN_AUCTION = 3;
+    // block between deployment and first auction
+    uint256 public blocksBetweenDeploymentAndFirstAuction;
+
+    // blocks between recurrent auction
+    uint256 public blocksBetweenAuction;
+
+    // max rounds of auction
+    uint256 public maxRounds;
+
     // payment amount per gas unit difference
-    uint256 public constant PAYMENT_PER_GAS_UNIT = 0.0001 ether;
+    uint256 public paymentPerGasUnit;
 
     // factory's portion of the payment
     uint256 public constant FACTORY_PORTION = 2000;
@@ -63,10 +68,17 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
     IClanker public immutable clankerFactory;
     IClankerFeeLocker public immutable feeLocker;
 
-    constructor(address _clankerFactory, address _feeLocker, address _weth) {
+    constructor(address owner_, address _clankerFactory, address _feeLocker, address _weth)
+        Ownable(owner_)
+    {
         clankerFactory = IClanker(_clankerFactory);
         feeLocker = IClankerFeeLocker(_feeLocker);
         weth = _weth;
+
+        blocksBetweenDeploymentAndFirstAuction = 2;
+        blocksBetweenAuction = 2;
+        maxRounds = 5;
+        paymentPerGasUnit = 0.0001 ether;
     }
 
     modifier onlyHook(PoolKey calldata poolKey) {
@@ -74,6 +86,38 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
             revert OnlyHook();
         }
         _;
+    }
+
+    function setBlocksBetweenDeploymentAndFirstAuction(
+        uint256 _blocksBetweenDeploymentAndFirstAuction
+    ) external onlyOwner {
+        uint256 oldBlocksBetweenDeploymentAndFirstAuction = blocksBetweenDeploymentAndFirstAuction;
+        blocksBetweenDeploymentAndFirstAuction = _blocksBetweenDeploymentAndFirstAuction;
+
+        emit SetBlocksBetweenDeploymentAndFirstAuction(
+            oldBlocksBetweenDeploymentAndFirstAuction, blocksBetweenDeploymentAndFirstAuction
+        );
+    }
+
+    function setBlocksBetweenAuction(uint256 _blocksBetweenAuction) external onlyOwner {
+        uint256 oldBlocksBetweenAuction = blocksBetweenAuction;
+        blocksBetweenAuction = _blocksBetweenAuction;
+
+        emit SetBlocksBetweenAuction(oldBlocksBetweenAuction, blocksBetweenAuction);
+    }
+
+    function setPaymentPerGasUnit(uint256 _paymentPerGasUnit) external onlyOwner {
+        uint256 oldPaymentPerGasUnit = paymentPerGasUnit;
+        paymentPerGasUnit = _paymentPerGasUnit;
+
+        emit SetPaymentPerGasUnit(oldPaymentPerGasUnit, paymentPerGasUnit);
+    }
+
+    function setMaxRounds(uint256 _maxRounds) external onlyOwner {
+        uint256 oldMaxRounds = maxRounds;
+        maxRounds = _maxRounds;
+
+        emit SetMaxRounds(oldMaxRounds, maxRounds);
     }
 
     // initialize the mev module for a specific pool, called by the hook
@@ -90,10 +134,10 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
         }
 
         // get the first round's gas peg
-        gasPeg[poolId] = _getBaseAuctionGasPeg();
+        gasPeg[poolId] = _getBaseAuctionGasPeg(blocksBetweenDeploymentAndFirstAuction);
 
         // track the block number for the auction to be ran in
-        nextAuctionBlock[poolId] = block.number + BLOCKS_BETWEEN_AUCTION;
+        nextAuctionBlock[poolId] = block.number + blocksBetweenDeploymentAndFirstAuction;
 
         // set the round to 1
         round[poolId] = 1;
@@ -101,15 +145,15 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
         emit AuctionInitialized(poolId, gasPeg[poolId], block.number, round[poolId]);
     }
 
-    function _getBaseAuctionGasPeg() internal view returns (uint256) {
+    function _getBaseAuctionGasPeg(uint256 _blocksBetweenAuction) internal view returns (uint256) {
         // Assuming that the sequencer is running vanilla EIP-1559, gas prices can increase
         // by max 12.5% per block if the previous block was full. To enable a clean signal
         // for the auction, we peg the starting auction's gas price to tx.base_gas *
-        // (1.125 ^ (blocks_between_auction))
+        // (1.125 ^ (_blocksBetweenAuction))
         //
         // This ensures that the lowest gas price signal can accommodate the highest shift
         // in the gas price
-        return block.basefee * (1125 ** BLOCKS_BETWEEN_AUCTION) / (1000 ** BLOCKS_BETWEEN_AUCTION);
+        return block.basefee * (1125 ** _blocksBetweenAuction) / (1000 ** _blocksBetweenAuction);
     }
 
     // pull payment from the payee, the price is a multiple of tx's gas price
@@ -129,7 +173,7 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
         }
 
         // calculate the expected payment for the given swap params
-        paymentAmount = uint256(gasSignal) * PAYMENT_PER_GAS_UNIT;
+        paymentAmount = uint256(gasSignal) * paymentPerGasUnit;
 
         // pull payment from the payee
         SafeERC20.safeTransferFrom(IERC20(weth), payee, address(this), paymentAmount);
@@ -182,14 +226,14 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0 {
         round[poolId] = round[poolId] + 1;
 
         // check if max rounds have been reached
-        if (round[poolId] > MAX_ROUNDS) {
+        if (round[poolId] > maxRounds) {
             emit AuctionEnded(poolId);
             return true;
         }
 
         // setup other variables for the next round
-        gasPeg[poolId] = _getBaseAuctionGasPeg();
-        nextAuctionBlock[poolId] = block.number + BLOCKS_BETWEEN_AUCTION;
+        gasPeg[poolId] = _getBaseAuctionGasPeg(blocksBetweenAuction);
+        nextAuctionBlock[poolId] = block.number + blocksBetweenAuction;
 
         emit AuctionReset(poolId, round[poolId]);
 
