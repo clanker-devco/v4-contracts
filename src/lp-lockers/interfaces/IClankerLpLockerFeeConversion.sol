@@ -29,4 +29,6 @@ interface IClankerLpLockerFeeConversion is IClankerLpLockerMultiple {
         address indexed swappedToken,
         uint256 amountOut
     );
+
+    event InitialFeePreferences(address indexed token, FeeIn[] feePreference);
 }

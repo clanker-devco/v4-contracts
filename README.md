@@ -28,7 +28,7 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerHookStaticFee: [0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC](https://basescan.org/address/0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC)
 - ClankerSniperAuctionV0: [0xFdc013ce003980889cFfd66b0c8329545ae1d1E8](https://basescan.org/address/0xFdc013ce003980889cFfd66b0c8329545ae1d1E8)
 - ClankerSniperUtilV0: [0x4E35277306a83D00E13e8C8A4307C672FA31FC99](https://basescan.org/address/0x4E35277306a83D00E13e8C8A4307C672FA31FC99)
-- ClankerLpLockerFeeConversion: [0xC9C44B79559C539186C2D0cf19c666efFf63a1F0](https://basescan.org/address/0xC9C44B79559C539186C2D0cf19c666efFf63a1F0)
+- ClankerLpLockerFeeConversion: [0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496](https://basescan.org/address/0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496)
 
 ### v4.0.0 (Base Sepolia)
 - Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://sepolia.basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
@@ -42,7 +42,7 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerHookStaticFee: [0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC](https://sepolia.basescan.org/address/0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC)
 - ClankerSniperAuctionV0: [0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0](https://sepolia.basescan.org/address/0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0)
 - ClankerSniperUtilV0: [0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3](https://sepolia.basescan.org/address/0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3)
-- ClankerLpLockerFeeConversion: [0xD17cbd93993E0501Edb57097ae6F982Aceb4DB36](https://sepolia.basescan.org/address/0xD17cbd93993E0501Edb57097ae6F982Aceb4DB36)
+- ClankerLpLockerFeeConversion: [0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f](https://sepolia.basescan.org/address/0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f)
 
 
 If you'd like these contracts on another chain, [please reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact)! For superchain purposes, we need to ensure that the Clanker contracts have the same address.

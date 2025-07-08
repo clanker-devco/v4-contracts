@@ -158,6 +158,7 @@ contract ClankerLpLockerFeeConversion is IClankerLpLockerFeeConversion, Reentran
         // store the fee preference
         feePreferences[token] = lpFeeConversionPreferences;
 
+        emit InitialFeePreferences(token, lpFeeConversionPreferences);
         emit TokenRewardAdded({
             token: tokenRewardInfo.token,
             poolKey: tokenRewardInfo.poolKey,
