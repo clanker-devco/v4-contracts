@@ -55,6 +55,8 @@ contract ClankerSniperUtilV0 is ReentrancyGuard {
     );
 
     error InvalidBidAmount();
+    error GasPriceTooLow();
+    error ValueBidMismatch();
     error InvalidRound();
     error InvalidBlock();
     error AuctionDidNotAdvance();
@@ -78,7 +80,7 @@ contract ClankerSniperUtilV0 is ReentrancyGuard {
 
     // helper function to calculate needed tx gas price for a target bid amount
     function getTxGasPriceForBidAmount(uint256 auctionGasPeg, uint256 desiredBidAmount)
-        external
+        public
         view
         returns (uint256 txGasPrice)
     {
@@ -108,6 +110,18 @@ contract ClankerSniperUtilV0 is ReentrancyGuard {
         // check that the correct block is being bid in
         if (block.number != clankerSniperAuction.nextAuctionBlock(poolId)) {
             revert InvalidBlock();
+        }
+
+        // check that the gas price is high enough
+        int256 paymentUnits = int256(tx.gasprice) - int256(clankerSniperAuction.gasPeg(poolId));
+        if (paymentUnits < 0) {
+            revert GasPriceTooLow();
+        }
+
+        // check proper msg.value was sent in
+        uint256 expectedBidAmount = clankerSniperAuction.paymentPerGasUnit() * uint256(paymentUnits);
+        if (msg.value != expectedBidAmount) {
+            revert ValueBidMismatch();
         }
 
         // convert payment msg.value to weth

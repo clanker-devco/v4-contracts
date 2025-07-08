@@ -10,12 +10,12 @@ import {IClankerSniperAuctionV0} from "./interfaces/IClankerSniperAuctionV0.sol"
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /*
  .--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--..--. 
@@ -142,7 +142,7 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         // set the round to 1
         round[poolId] = 1;
 
-        emit AuctionInitialized(poolId, gasPeg[poolId], block.number, round[poolId]);
+        emit AuctionInitialized(poolId, gasPeg[poolId], nextAuctionBlock[poolId], round[poolId]);
     }
 
     function _getBaseAuctionGasPeg(uint256 _blocksBetweenAuction) internal view returns (uint256) {
@@ -184,6 +184,10 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
     function _sendPayment(PoolKey calldata poolKey, bool clankerIsToken0, uint256 paymentAmount)
         internal
     {
+        if (paymentAmount == 0) {
+            return;
+        }
+
         // determine factory vs lp payment split
         uint256 factoryPayment = paymentAmount * FACTORY_PORTION / BPS;
         uint256 lpPayment = paymentAmount - factoryPayment;
@@ -213,8 +217,8 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         rewardsSplit[tokenRewardInfo.rewardBps.length - 1] = lpPayment - rewardTotal;
 
         // distribute the rewards
+        SafeERC20.forceApprove(IERC20(weth), address(feeLocker), lpPayment);
         for (uint256 i = 0; i < tokenRewardInfo.rewardBps.length; i++) {
-            IERC20(weth).approve(address(feeLocker), rewardsSplit[i]);
             feeLocker.storeFees(tokenRewardInfo.rewardRecipients[i], weth, rewardsSplit[i]);
         }
 
@@ -235,7 +239,7 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         gasPeg[poolId] = _getBaseAuctionGasPeg(blocksBetweenAuction);
         nextAuctionBlock[poolId] = block.number + blocksBetweenAuction;
 
-        emit AuctionReset(poolId, round[poolId]);
+        emit AuctionReset(poolId, gasPeg[poolId], nextAuctionBlock[poolId], round[poolId]);
 
         return false;
     }

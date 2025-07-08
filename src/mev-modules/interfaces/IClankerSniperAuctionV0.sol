@@ -12,16 +12,17 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 interface IClankerSniperAuctionV0 is IClankerMevModule {
     error PoolAlreadyInitialized();
     error GasSignalNegative();
-    error InvalidPayment();
     error NotAuctionBlock();
 
     event AuctionInitialized(
-        PoolId indexed poolId, uint256 gasPeg, uint256 indexed blockNumber, uint256 round
+        PoolId indexed poolId, uint256 gasPeg, uint256 indexed auctionBlock, uint256 round
     );
     event AuctionWon(
         PoolId indexed poolId, address indexed payee, uint256 paymentAmount, uint256 round
     );
-    event AuctionReset(PoolId indexed poolId, uint256 round);
+    event AuctionReset(
+        PoolId indexed poolId, uint256 gasPeg, uint256 indexed auctionBlock, uint256 round
+    );
     event AuctionExpired(PoolId indexed poolId, uint256 round);
     event AuctionEnded(PoolId indexed poolId);
     event AuctionRewardsTransferred(
