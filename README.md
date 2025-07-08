@@ -39,7 +39,7 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerHookStaticFee: [0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC](https://sepolia.basescan.org/address/0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC)
 - ClankerSniperAuctionV0: [0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0](https://sepolia.basescan.org/address/0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0)
 - ClankerSniperUtilV0: [0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3](https://sepolia.basescan.org/address/0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3)
-- ClankerLpLockerFeeConversion: [0x8F7EF51CF06f00aA796E8cdA498D712D4ecFE8E1](https://sepolia.basescan.org/address/0x8F7EF51CF06f00aA796E8cdA498D712D4ecFE8E1)
+- ClankerLpLockerFeeConversion: [0xD17cbd93993E0501Edb57097ae6F982Aceb4DB36](https://sepolia.basescan.org/address/0xD17cbd93993E0501Edb57097ae6F982Aceb4DB36)
 
 
 If you'd like these contracts on another chain, [please reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact)! For superchain purposes, we need to ensure that the Clanker contracts have the same address.
