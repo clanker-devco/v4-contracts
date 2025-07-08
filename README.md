@@ -36,7 +36,7 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerUniv4EthDevBuy: [0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c](https://sepolia.basescan.org/address/0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c)
 - ClankerMevBlockDelay: [0x71DB365E93e170ba3B053339A917c11024e7a9d4](https://sepolia.basescan.org/address/0x71DB365E93e170ba3B053339A917c11024e7a9d4)
 - ClankerHookDynamicFee: [0xE63b0A59100698f379F9B577441A561bAF9828cc](https://sepolia.basescan.org/address/0xE63b0A59100698f379F9B577441A561bAF9828cc)
-- ClankerHookStaticFee: [0x3eC2a26b6eF16c288561692AE8D9681fa773A8cc](https://sepolia.basescan.org/address/0x3eC2a26b6eF16c288561692AE8D9681fa773A8cc)
+- ClankerHookStaticFee: [0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC](https://sepolia.basescan.org/address/0xDFcCcfBeef7F3Fc8b16027Ce6feACb48024068cC)
 
 
 If you'd like these contracts on another chain, [please reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact)! For superchain purposes, we need to ensure that the Clanker contracts have the same address.
