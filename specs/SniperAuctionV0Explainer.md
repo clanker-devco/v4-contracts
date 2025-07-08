@@ -25,6 +25,24 @@ The following auction state variables are of importance to snipers and are query
 - `nextAuctionBlock`: The block number at which the next auction will accept bids at.
 - `gasPeg`: The gas price which the next round of the auction will start at.
 
+The following auction events are of importance to snipers and are emitted by the `ClankerSniperAuctionV0` contract:
+```solidity
+// emitted when a new auction is initialized with the first round's parameters
+event AuctionInitialized(
+    PoolId indexed poolId, uint256 gasPeg, uint256 indexed auctionBlock, uint256 round
+);
+// emitted when an auction is reset, with the next round's parameters
+event AuctionReset(
+    PoolId indexed poolId, uint256 gasPeg, uint256 indexed auctionBlock, uint256 round
+);
+// emitted when a sniper wins an auction
+event AuctionWon(PoolId indexed poolId, address indexed payee, uint256 paymentAmount, uint256 round);
+
+// emitted when the gas payment expectation is updated
+// note: advanced warning will be given, will not be updated often
+event SetPaymentPerGasUnit(uint256 oldPaymentPerGasUnit, uint256 newPaymentPerGasUnit);
+```
+
 ## Example Auction Iteration
 
 A pool is deployed in block 1 with a base fee of 10 gwei. The first auction round occurs in block 3 with a starting auction gas price of 12 gwei. Three snipers attempt to snipe with the following configurations:
