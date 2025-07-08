@@ -26,6 +26,9 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerMevBlockDelay: [0xE143f9872A33c955F23cF442BB4B1EFB3A7402A2](https://basescan.org/address/0xE143f9872A33c955F23cF442BB4B1EFB3A7402A2)
 - ClankerHookDynamicFee: [0x34a45c6B61876d739400Bd71228CbcbD4F53E8cC](https://basescan.org/address/0x34a45c6B61876d739400Bd71228CbcbD4F53E8cC)
 - ClankerHookStaticFee: [0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC](https://basescan.org/address/0xDd5EeaFf7BD481AD55Db083062b13a3cdf0A68CC)
+- ClankerSniperAuctionV0: [0xFdc013ce003980889cFfd66b0c8329545ae1d1E8](https://basescan.org/address/0xFdc013ce003980889cFfd66b0c8329545ae1d1E8)
+- ClankerSniperUtilV0: [0x4E35277306a83D00E13e8C8A4307C672FA31FC99](https://basescan.org/address/0x4E35277306a83D00E13e8C8A4307C672FA31FC99)
+- ClankerLpLockerFeeConversion: [0xC9C44B79559C539186C2D0cf19c666efFf63a1F0](https://basescan.org/address/0xC9C44B79559C539186C2D0cf19c666efFf63a1F0)
 
 ### v4.0.0 (Base Sepolia)
 - Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://sepolia.basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
