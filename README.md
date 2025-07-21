@@ -44,6 +44,30 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperUtilV0: [0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3](https://sepolia.basescan.org/address/0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3)
 - ClankerLpLockerFeeConversion: [0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f](https://sepolia.basescan.org/address/0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f)
 
+### v4.0.0 (Unichain Mainnet)
+- Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://uniscan.xyz/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
+- ClankerFeeLocker: [0x1d5A0F0BD3eA07F78FC14577f053de7A3FEc35B2](https://uniscan.xyz/address/0x1d5A0F0BD3eA07F78FC14577f053de7A3FEc35B2)
+- ClankerLpLockerFeeConversion: [0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c](https://uniscan.xyz/address/0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c)
+- ClankerVault: [0xA9C0a423f0092176fC48d7B50a1fCae8cf5BB441](https://uniscan.xyz/address/0xA9C0a423f0092176fC48d7B50a1fCae8cf5BB441)
+- ClankerAirdrop: [0x35bfE89d95F26674bF06bB8bFE55f8D73E9280D2](https://uniscan.xyz/address/0x35bfE89d95F26674bF06bB8bFE55f8D73E9280D2)
+- ClankerUniv4EthDevBuy: [0x267259e36914839Eb584e962558563760AE28862](https://uniscan.xyz/address/0x267259e36914839Eb584e962558563760AE28862)
+- ClankerMevBlockDelay: [0x42A95190B4088C88Dd904d930c79deC1158bF09D](https://uniscan.xyz/address/0x42A95190B4088C88Dd904d930c79deC1158bF09D)
+- ClankerHookDynamicFee: [0x9b37A43422D7bBD4C8B231be11E50AD1acE828CC](https://uniscan.xyz/address/0x9b37A43422D7bBD4C8B231be11E50AD1acE828CC)
+- ClankerHookStaticFee: [0xBc6e5aBDa425309c2534Bc2bC92562F5419ce8Cc](https://uniscan.xyz/address/0xBc6e5aBDa425309c2534Bc2bC92562F5419ce8Cc)
+- ClankerSniperAuctionV0: [0x78B512C5074a1084bf3b8e6cbA8a1710d2a8d0A2](https://uniscan.xyz/address/0x78B512C5074a1084bf3b8e6cbA8a1710d2a8d0A2)
+- ClankerSniperUtilV0: [0xA25e594869ddb46c33233A793E3c8b207CC719a2](https://uniscan.xyz/address/0xA25e594869ddb46c33233A793E3c8b207CC719a2)
+
+### v4.0.0 (Arbitrum Mainnet)
+- Clanker: [0xEb9D2A726Edffc887a574dC7f46b3a3638E8E44f](https://arbiscan.io/address/0xEb9D2A726Edffc887a574dC7f46b3a3638E8E44f)
+- ClankerFeeLocker: [0x92C0DCbAba17b0F5f3a7537dA82c0F80520e4dF6](https://arbiscan.io/address/0x92C0DCbAba17b0F5f3a7537dA82c0F80520e4dF6)
+- ClankerLpLockerFeeConversion: [0xF3622742b1E446D92e45E22923Ef11C2fcD55D68](https://arbiscan.io/address/0xF3622742b1E446D92e45E22923Ef11C2fcD55D68)
+- ClankerVault: [0xa1da0600Eb4A9F3D4a892feAa2c2caf80A4A2f14](https://arbiscan.io/address/0xa1da0600Eb4A9F3D4a892feAa2c2caf80A4A2f14)
+- ClankerAirdrop: [0x303470b6b6a35B06A5A05763A7caD776fbf27B71](https://arbiscan.io/address/0x303470b6b6a35B06A5A05763A7caD776fbf27B71)
+- ClankerUniv4EthDevBuy: [0x70aDdc06fE89a5cF9E533aea8D025dB06795e492](https://arbiscan.io/address/0x70aDdc06fE89a5cF9E533aea8D025dB06795e492)
+- ClankerMevTimeDelay: [0x4E35277306a83D00E13e8C8A4307C672FA31FC99](https://arbiscan.io/address/0x4E35277306a83D00E13e8C8A4307C672FA31FC99)
+- ClankerHookDynamicFee: [0xFd213BE7883db36e1049dC42f5BD6A0ec66B68cC](https://arbiscan.io/address/0xFd213BE7883db36e1049dC42f5BD6A0ec66B68cC)
+- ClankerHookStaticFee: [0xf7aC669593d2D9D01026Fa5B756DD5B4f7aAa8Cc](https://arbiscan.io/address/0xf7aC669593d2D9D01026Fa5B756DD5B4f7aAa8Cc)
+
 
 If you'd like these contracts on another chain, [please reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact)! For superchain purposes, we need to ensure that the Clanker contracts have the same address.
 

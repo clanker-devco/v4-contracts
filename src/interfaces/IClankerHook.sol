@@ -59,5 +59,11 @@ interface IClankerHook {
     // turn a pool's mev module on if it exists
     function initializeMevModule(PoolKey calldata poolKey, bytes calldata mevModuleData) external;
 
+    // note: original base IClankerHook deployment is missing these functions but
+    // the IClankerLpFeeConversion locker needs them
+    function mevModuleEnabled(PoolId poolId) external view returns (bool);
+    function poolCreationTimestamp(PoolId poolId) external view returns (uint256);
+    function MAX_MEV_MODULE_DELAY() external view returns (uint256);
+
     function supportsInterface(bytes4 interfaceId) external pure returns (bool);
 }
