@@ -4,7 +4,7 @@ Smart contracts of Clanker v4.0.0
 
 Clanker is an autonomous agent for deploying tokens. Currently, users may request clanker to deploy an ERC-20 token on Base by tagging [@clanker](https://farcaster.xyz/clanker/casts-and-replies) on Farcaster, on our website [clanker.world](https://www.clanker.world/deploy), by using one of our interface partners, or through the smart contracts directly. This repo contains the onchain code utilized by the clanker agent for token deployment, token pre-launch distribution, and LP fee management.
 
-Documentation for the v4.0 contracts can be found [here](specs/v4_0_0.md) and our general docs can be found [here](https://clanker.gitbook.io/clanker-documentation) (note: not updated for v4.0 yet).
+Documentation for the v4.0 contracts can be found [here](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4.0.0) and our general docs can be found [here](https://clanker.gitbook.io/clanker-documentation).
 
 For a typescript sdk that interfaces with the clanker contracts, please see our companion repo [clanker-sdk](https://github.com/clanker-devco/clanker-sdk).
 
@@ -150,4 +150,4 @@ struct MevModuleConfig {
 }
 ```
 
-Explanation of the parameters are in the [specs](specs/v4_0_0.md) folder. Please [reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact) if you have any questions! 
+Explanation of the parameters are in our [documentation](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4.0.0). Please [reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact) if you have any questions! 
