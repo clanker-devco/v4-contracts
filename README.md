@@ -1,10 +1,10 @@
-# v4.0.0-contracts
+# v4-contracts
 
-Smart contracts of Clanker v4.0.0
+Smart contracts of Clanker v4
 
 Clanker is an autonomous agent for deploying tokens. Currently, users may request clanker to deploy an ERC-20 token on Base by tagging [@clanker](https://farcaster.xyz/clanker/casts-and-replies) on Farcaster, on our website [clanker.world](https://www.clanker.world/deploy), by using one of our interface partners, or through the smart contracts directly. This repo contains the onchain code utilized by the clanker agent for token deployment, token pre-launch distribution, and LP fee management.
 
-Documentation for the v4.0 contracts can be found [here](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4.0.0) and our general docs can be found [here](https://clanker.gitbook.io/clanker-documentation).
+Documentation for the v4 contracts can be found [here](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4) and our general docs can be found [here](https://clanker.gitbook.io/clanker-documentation).
 
 For a typescript sdk that interfaces with the clanker contracts, please see our companion repo [clanker-sdk](https://github.com/clanker-devco/clanker-sdk).
 
@@ -16,7 +16,8 @@ As Clanker deploys tokens, it also creates dynamic fee Uniswap V4 pools using ou
 
 Check out our [dune dashboards](https://dune.com/clanker_protection_team) for token stats and our website [clanker.world](https://clanker.world) to see the clanker tokens in action and to launch a token.
 
-### v4.0.0 (Base Mainnet)
+### Base Mainnet
+#### v4.0
 - Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
 - ClankerFeeLocker: [0xF3622742b1E446D92e45E22923Ef11C2fcD55D68](https://basescan.org/address/0xF3622742b1E446D92e45E22923Ef11C2fcD55D68)
 - ClankerLpLocker: [0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0](https://basescan.org/address/0x29d17C1A8D851d7d4cA97FAe97AcAdb398D9cCE0)
@@ -29,8 +30,14 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperAuctionV0: [0xFdc013ce003980889cFfd66b0c8329545ae1d1E8](https://basescan.org/address/0xFdc013ce003980889cFfd66b0c8329545ae1d1E8)
 - ClankerSniperUtilV0: [0x4E35277306a83D00E13e8C8A4307C672FA31FC99](https://basescan.org/address/0x4E35277306a83D00E13e8C8A4307C672FA31FC99)
 - ClankerLpLockerFeeConversion: [0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496](https://basescan.org/address/0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496)
+#### v4.1
+- ClankerHookDynamicFeeV2: [0x3765e0791a745F086ACAA63A46837298D32FA8CC](https://basescan.org/address/0x3765e0791a745F086ACAA63A46837298D32FA8CC)
+- ClankerHookStaticFeeV2: [0x9a0194F92284421E6953E332c6217fA6CFa568cC](https://basescan.org/address/0x9a0194F92284421E6953E332c6217fA6CFa568cC)
+- ClankerSniperAuctionV2: [0xebB25BB797D82CB78E1bc70406b13233c0854413](https://basescan.org/address/0xebB25BB797D82CB78E1bc70406b13233c0854413)
+- ClankerSniperUtilV2: [0xC5AA2945d52a4096b946891ef8e01668f82eB74E](https://basescan.org/address/0xC5AA2945d52a4096b946891ef8e01668f82eB74E)
 
-### v4.0.0 (Base Sepolia)
+### Base Sepolia
+#### v4.0
 - Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://sepolia.basescan.org/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
 - ClankerFeeLocker: [0x42A95190B4088C88Dd904d930c79deC1158bF09D](https://sepolia.basescan.org/address/0x42A95190B4088C88Dd904d930c79deC1158bF09D)
 - ClankerLpLockerMultiple: [0x33e2Eda238edcF470309b8c6D228986A1204c8f9](https://sepolia.basescan.org/address/0x33e2Eda238edcF470309b8c6D228986A1204c8f9)
@@ -43,8 +50,14 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperAuctionV0: [0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0](https://sepolia.basescan.org/address/0x261fE99C4D0D41EE8d0e594D11aec740E8354ab0)
 - ClankerSniperUtilV0: [0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3](https://sepolia.basescan.org/address/0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3)
 - ClankerLpLockerFeeConversion: [0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f](https://sepolia.basescan.org/address/0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f)
+#### v4.1
+- ClankerHookDynamicFeeV2: [0xD918bF64E465399fFFD959d95dfe911f59F1A8Cc](https://sepolia.basescan.org/address/0xD918bF64E465399fFFD959d95dfe911f59F1A8Cc)
+- ClankerHookStaticFeeV2: [0xEd2AE17aF046D4c01ae9eB7312C964B7c26128cC](https://sepolia.basescan.org/address/0xEd2AE17aF046D4c01ae9eB7312C964B7c26128cC)
+- ClankerSniperAuctionV2: [0x8CBD6694A9DFc0eF4D1cd333e013B88E7003E10A](https://sepolia.basescan.org/address/0x8CBD6694A9DFc0eF4D1cd333e013B88E7003E10A)
+- ClankerSniperUtilV2: [0x4DC6348D38E3e199D7Ea032c8cfE4EbDe94b442A](https://sepolia.basescan.org/address/0x4DC6348D38E3e199D7Ea032c8cfE4EbDe94b442A)
 
-### v4.0.0 (Unichain Mainnet)
+### Unichain Mainnet
+#### v4.0
 - Clanker: [0xE85A59c628F7d27878ACeB4bf3b35733630083a9](https://uniscan.xyz/address/0xE85A59c628F7d27878ACeB4bf3b35733630083a9)
 - ClankerFeeLocker: [0x1d5A0F0BD3eA07F78FC14577f053de7A3FEc35B2](https://uniscan.xyz/address/0x1d5A0F0BD3eA07F78FC14577f053de7A3FEc35B2)
 - ClankerLpLockerFeeConversion: [0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c](https://uniscan.xyz/address/0x691f97752E91feAcD7933F32a1FEdCeDae7bB59c)
@@ -57,7 +70,8 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperAuctionV0: [0x78B512C5074a1084bf3b8e6cbA8a1710d2a8d0A2](https://uniscan.xyz/address/0x78B512C5074a1084bf3b8e6cbA8a1710d2a8d0A2)
 - ClankerSniperUtilV0: [0xA25e594869ddb46c33233A793E3c8b207CC719a2](https://uniscan.xyz/address/0xA25e594869ddb46c33233A793E3c8b207CC719a2)
 
-### v4.0.0 (Arbitrum Mainnet)
+### Arbitrum Mainnet
+#### v4.0
 - Clanker: [0xEb9D2A726Edffc887a574dC7f46b3a3638E8E44f](https://arbiscan.io/address/0xEb9D2A726Edffc887a574dC7f46b3a3638E8E44f)
 - ClankerFeeLocker: [0x92C0DCbAba17b0F5f3a7537dA82c0F80520e4dF6](https://arbiscan.io/address/0x92C0DCbAba17b0F5f3a7537dA82c0F80520e4dF6)
 - ClankerLpLockerFeeConversion: [0xF3622742b1E446D92e45E22923Ef11C2fcD55D68](https://arbiscan.io/address/0xF3622742b1E446D92e45E22923Ef11C2fcD55D68)
@@ -150,4 +164,4 @@ struct MevModuleConfig {
 }
 ```
 
-Explanation of the parameters are in our [documentation](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4.0.0). Please [reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact) if you have any questions! 
+Explanation of the parameters are in our [documentation](https://clanker.gitbook.io/clanker-documentation/references/core-contracts/v4). Please [reach out to us](https://clanker.gitbook.io/clanker-documentation/references/contact) if you have any questions! 
