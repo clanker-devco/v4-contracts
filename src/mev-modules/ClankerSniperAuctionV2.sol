@@ -3,8 +3,12 @@ pragma solidity ^0.8.28;
 
 import {IClanker} from "../interfaces/IClanker.sol";
 import {IClankerFeeLocker} from "../interfaces/IClankerFeeLocker.sol";
+
+import {IClankerHookV2} from "../hooks/interfaces/IClankerHookV2.sol";
 import {IClankerLpLocker} from "../interfaces/IClankerLpLocker.sol";
 import {IClankerMevModule} from "../interfaces/IClankerMevModule.sol";
+
+import {IClankerMevDescendingFees} from "./interfaces/IClankerMevDescendingFees.sol";
 import {IClankerSniperAuctionV0} from "./interfaces/IClankerSniperAuctionV0.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -40,10 +44,12 @@ import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
  `--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--'`--' 
 */
 
-contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Ownable {
-    // errors
-    error PoolAlreadyInitialized();
-    
+contract ClankerSniperAuctionV2 is
+    ReentrancyGuard,
+    IClankerSniperAuctionV0,
+    IClankerMevDescendingFees,
+    Ownable
+{
     // gas peg and block number for a pool's auction
     mapping(PoolId => uint256 gasPeg) public gasPeg;
     mapping(PoolId => uint256 nextAuctionBlock) public nextAuctionBlock;
@@ -65,6 +71,13 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
     // factory's portion of the payment
     uint256 public constant FACTORY_PORTION = 2000;
     uint256 public constant BPS = 10_000;
+
+    // descending fee config
+    mapping(PoolId poolId => FeeConfig feeConfig) public feeConfig;
+    mapping(PoolId poolId => uint256 poolDecayStartTime) public poolDecayStartTime;
+
+    // variable to have decay start at end of auction
+    mapping(PoolId poolId => uint256 auctionTimestamp) internal auctionTimestamp;
 
     address public immutable weth;
 
@@ -123,8 +136,72 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         emit SetMaxRounds(oldMaxRounds, maxRounds);
     }
 
+    // returns the the LP fee that will be used for the next swap or
+    // zero if the decay period is over
+    function getFee(PoolId poolId) external view returns (uint24) {
+        // if the pool is not initialized, return zero
+        if (gasPeg[poolId] == 0) {
+            return 0;
+        }
+
+        // if the decay period has not started, return the starting fee
+        if (poolDecayStartTime[poolId] == 0) {
+            return feeConfig[poolId].startingFee;
+        }
+
+        // check if the decay period is over
+        if (block.timestamp > poolDecayStartTime[poolId] + feeConfig[poolId].secondsToDecay) {
+            // decay period is over, return zero
+            return 0;
+        }
+
+        return _calculateFee(poolId);
+    }
+
+    function _validateFeeConfig(PoolKey calldata poolKey, FeeConfig memory feeConfigData)
+        internal
+        view
+    {
+        // ensure the seconds to decay is greater than zero
+        if (feeConfigData.secondsToDecay == 0) {
+            revert TimeDecayMustBeGreaterThanZero();
+        }
+
+        // ensure the starting fee is not zero
+        if (feeConfigData.startingFee == 0) {
+            revert StartingFeeMustBeGreaterThanZero();
+        }
+
+        // ensure the starting fee is greater than the ending fee
+        if (feeConfigData.startingFee < feeConfigData.endingFee) {
+            revert StartingFeeMustBeGreaterThanEndingFee();
+        }
+
+        // ensure that the associated hook is a ClankerHookV2
+        if (
+            !IClankerHookV2(address(poolKey.hooks)).supportsInterface(
+                type(IClankerHookV2).interfaceId
+            )
+        ) {
+            revert OnlyClankerHookV2();
+        }
+
+        // ensure the starting fee is not greater than the max mev LP fee
+        if (feeConfigData.startingFee > IClankerHookV2(address(poolKey.hooks)).MAX_MEV_LP_FEE()) {
+            revert StartingFeeGreaterThanMaxLpFee();
+        }
+
+        // ensure the max time length is not longer than the max auction length
+        if (
+            feeConfigData.secondsToDecay
+                > IClankerHookV2(address(poolKey.hooks)).MAX_MEV_MODULE_DELAY()
+        ) {
+            revert TimeDecayLongerThanMaxMevDelay();
+        }
+    }
+
     // initialize the mev module for a specific pool, called by the hook
-    function initialize(PoolKey calldata poolKey, bytes calldata)
+    function initialize(PoolKey calldata poolKey, bytes calldata descendingFeeConfig)
         external
         nonReentrant
         onlyHook(poolKey)
@@ -146,6 +223,22 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         round[poolId] = 1;
 
         emit AuctionInitialized(poolId, gasPeg[poolId], nextAuctionBlock[poolId], round[poolId]);
+
+        // initialize the descending fee config
+        IClankerMevDescendingFees.FeeConfig memory feeConfigData =
+            abi.decode(descendingFeeConfig, (IClankerMevDescendingFees.FeeConfig));
+
+        // validate the descending fee config
+        _validateFeeConfig(poolKey, feeConfigData);
+
+        feeConfig[poolId] = feeConfigData;
+
+        emit FeeConfigSet(
+            poolId, feeConfigData.startingFee, feeConfigData.endingFee, feeConfigData.secondsToDecay
+        );
+
+        // set the auction timestamp to the current block timestamp
+        auctionTimestamp[poolId] = block.timestamp;
     }
 
     function _getBaseAuctionGasPeg(uint256 _blocksBetweenAuction) internal view returns (uint256) {
@@ -228,14 +321,17 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         emit AuctionRewardsTransferred(poolKey.toId(), lpPayment, factoryPayment);
     }
 
-    function _prepareNextRound(PoolId poolId) internal returns (bool nextRound) {
-        // bump round
+    function _prepareNextRound(PoolId poolId) internal {
+        // bump round and record the auction timestamp
         round[poolId] = round[poolId] + 1;
+        auctionTimestamp[poolId] = block.timestamp;
 
-        // check if max rounds have been reached
+        // check if max rounds have been reached, if so,
+        // trigger the start of the decay logic
         if (round[poolId] > maxRounds) {
+            poolDecayStartTime[poolId] = block.timestamp;
             emit AuctionEnded(poolId);
-            return true;
+            return;
         }
 
         // setup other variables for the next round
@@ -243,7 +339,41 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         nextAuctionBlock[poolId] = block.number + blocksBetweenAuction;
 
         emit AuctionReset(poolId, gasPeg[poolId], nextAuctionBlock[poolId], round[poolId]);
+    }
 
+    function _calculateFee(PoolId poolId) internal view returns (uint24) {
+        // how much time has passed since pool creation
+        uint256 timeDecay =
+            feeConfig[poolId].secondsToDecay - (block.timestamp - (poolDecayStartTime[poolId]));
+        uint256 feeRange = feeConfig[poolId].startingFee - feeConfig[poolId].endingFee;
+
+        // Parabolic decay: fee = endingFee + feeRange * (timeDecay / timeToDecay)²
+        uint256 normalizedTime = (timeDecay * 1e18) / feeConfig[poolId].secondsToDecay; // Scale for precision
+        uint256 squaredTime = (normalizedTime * normalizedTime) / 1e18;
+        uint256 decayAmount = (feeRange * squaredTime) / 1e18;
+
+        return uint24(feeConfig[poolId].endingFee + decayAmount);
+    }
+
+    function _setLpFee(PoolKey calldata poolKey, uint24 lpFee) internal {
+        // call back into the hook to update the fee for the swap
+        IClankerHookV2(msg.sender).mevModuleSetFee(poolKey, lpFee);
+    }
+
+    function _handleFeeDecay(PoolKey calldata poolKey) internal returns (bool disableMevModule) {
+        PoolId poolId = poolKey.toId();
+
+        // check if the decay period is over
+        if (block.timestamp > poolDecayStartTime[poolId] + feeConfig[poolId].secondsToDecay) {
+            // decay period is over, disable the mev module
+            emit DecayPeriodOver(poolId);
+            return true;
+        }
+
+        // decay period is not over, set the LP fee
+        _setLpFee(poolKey, _calculateFee(poolId));
+
+        // mev module is still active
         return false;
     }
 
@@ -254,16 +384,22 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         bool clankerIsToken0,
         bytes calldata auctionData // expected to be address paying
     ) external nonReentrant onlyHook(poolKey) returns (bool disableMevModule) {
-        // check if the auction is ready to be ran
-        if (block.number < nextAuctionBlock[poolKey.toId()]) {
+        // check if the auction is ready to be ran or if we need to trigger the decay logic
+        if (poolDecayStartTime[poolKey.toId()] != 0) {
+            // decay period is active, allow the decay logic to handle setting the LP fee
+            return _handleFeeDecay(poolKey);
+        } else if (block.number < nextAuctionBlock[poolKey.toId()]) {
             // auction block not reached yet
             revert NotAuctionBlock();
         } else if (block.number > nextAuctionBlock[poolKey.toId()]) {
-            // auction block passed with no winner, disable the module even if not all
-            // rounds have been run and let the swap happen
+            // auction block has passed, trigger the decay logic start
             emit AuctionExpired(poolKey.toId(), round[poolKey.toId()]);
-            return true;
+
+            // note: the decay period starts at the last targeted auction block's timestamp
+            poolDecayStartTime[poolKey.toId()] = auctionTimestamp[poolKey.toId()];
+            return _handleFeeDecay(poolKey);
         }
+        // block == nextAuctionBlock, run the auction logic
 
         // pull payment from the payee
         uint256 paymentAmount = _pullPayment(poolKey.toId(), auctionData);
@@ -271,8 +407,14 @@ contract ClankerSniperAuctionV0 is ReentrancyGuard, IClankerSniperAuctionV0, Own
         // send payment to fee recipients
         _sendPayment(poolKey, clankerIsToken0, paymentAmount);
 
-        // setup auction for next round or disable if max rounds reached
-        return _prepareNextRound(poolKey.toId());
+        // set the LP fee to the starting fee
+        _setLpFee(poolKey, feeConfig[poolKey.toId()].startingFee);
+
+        // setup auction for next round
+        _prepareNextRound(poolKey.toId());
+
+        // mev module is still active
+        return false;
     }
 
     // implements the IClankerMevModule interface
