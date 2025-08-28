@@ -10,7 +10,6 @@ import {PoolId} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
 interface IClankerSniperAuctionV0 is IClankerMevModule {
-    error PoolAlreadyInitialized();
     error GasSignalNegative();
     error NotAuctionBlock();
 
