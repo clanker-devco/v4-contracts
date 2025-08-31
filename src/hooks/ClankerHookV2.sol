@@ -61,7 +61,10 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
     mapping(PoolId => address) public mevModule;
     mapping(PoolId => bool) public mevModuleEnabled;
     mapping(PoolId => uint256) public poolCreationTimestamp;
+
+    // pool extension pool variables
     mapping(PoolId => address) public poolExtension;
+    mapping(PoolId => bool) public poolExtensionSetup;
 
     modifier onlyFactory() {
         if (msg.sender != factory) {
@@ -247,6 +250,8 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
             IClankerHookV2PoolExtension(poolExtension[poolKey.toId()]).initializePostLockerSetup(
                 poolKey, locker[poolKey.toId()], clankerIsToken0[poolKey.toId()]
             );
+            // set the pool extension setup to true
+            poolExtensionSetup[poolKey.toId()] = true;
         }
 
         // enable the mev module
@@ -332,10 +337,17 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
     function _runPoolExtension(
         PoolKey calldata poolKey,
         IPoolManager.SwapParams calldata swapParams,
+        address sender,
         BalanceDelta delta,
         bytes calldata swapData
     ) internal {
-        if (poolExtension[poolKey.toId()] != address(0)) {
+        // only run the pool extension if it exists, is setup, and the sender is not the locker.
+        // we don't want to run it when the locker is swapping because it will run the
+        // extension code before the user's swap is complete
+        if (
+            poolExtension[poolKey.toId()] != address(0) && poolExtensionSetup[poolKey.toId()]
+                && sender != locker[poolKey.toId()]
+        ) {
             // decode the swap data for the pool extension
             PoolSwapData memory poolSwapData;
             if (swapData.length > 0) {
@@ -472,7 +484,7 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
     }
 
     function _afterSwap(
-        address,
+        address sender,
         PoolKey calldata poolKey,
         IPoolManager.SwapParams calldata swapParams,
         BalanceDelta delta,
@@ -543,7 +555,7 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
         }
 
         // run the pool extension
-        _runPoolExtension(poolKey, swapParams, delta, swapData);
+        _runPoolExtension(poolKey, swapParams, sender, delta, swapData);
 
         return (BaseHook.afterSwap.selector, unspecifiedDelta);
     }

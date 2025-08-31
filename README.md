@@ -31,8 +31,8 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperUtilV0: [0x4E35277306a83D00E13e8C8A4307C672FA31FC99](https://basescan.org/address/0x4E35277306a83D00E13e8C8A4307C672FA31FC99)
 - ClankerLpLockerFeeConversion: [0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496](https://basescan.org/address/0x63D2DfEA64b3433F4071A98665bcD7Ca14d93496)
 #### v4.1
-- ClankerHookDynamicFeeV2: [0x3765e0791a745F086ACAA63A46837298D32FA8CC](https://basescan.org/address/0x3765e0791a745F086ACAA63A46837298D32FA8CC)
-- ClankerHookStaticFeeV2: [0x9a0194F92284421E6953E332c6217fA6CFa568cC](https://basescan.org/address/0x9a0194F92284421E6953E332c6217fA6CFa568cC)
+- ClankerHookDynamicFeeV2: [0x9A82BfCf5fd939CB7256f2d41479Bc0DC67968cC](https://basescan.org/address/0x9A82BfCf5fd939CB7256f2d41479Bc0DC67968cC)
+- ClankerHookStaticFeeV2: [0xBF5ACAB339D2970938Ff4A2753d6cbbb8AaaE8cC](https://basescan.org/address/0xBF5ACAB339D2970938Ff4A2753d6cbbb8AaaE8cC)
 - ClankerSniperAuctionV2: [0xebB25BB797D82CB78E1bc70406b13233c0854413](https://basescan.org/address/0xebB25BB797D82CB78E1bc70406b13233c0854413)
 - ClankerSniperUtilV2: [0xC5AA2945d52a4096b946891ef8e01668f82eB74E](https://basescan.org/address/0xC5AA2945d52a4096b946891ef8e01668f82eB74E)
 
@@ -51,8 +51,8 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperUtilV0: [0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3](https://sepolia.basescan.org/address/0x8806169969aE96bfaaDb3eFd4B10785BEEb321b3)
 - ClankerLpLockerFeeConversion: [0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f](https://sepolia.basescan.org/address/0x824bB048a5EC6e06a09aEd115E9eEA4618DC2c8f)
 #### v4.1
-- ClankerHookDynamicFeeV2: [0xD918bF64E465399fFFD959d95dfe911f59F1A8Cc](https://sepolia.basescan.org/address/0xD918bF64E465399fFFD959d95dfe911f59F1A8Cc)
-- ClankerHookStaticFeeV2: [0xEd2AE17aF046D4c01ae9eB7312C964B7c26128cC](https://sepolia.basescan.org/address/0xEd2AE17aF046D4c01ae9eB7312C964B7c26128cC)
+- ClankerHookDynamicFeeV2: [0x412601099fACB2512ea56BCaCaF7022C6284a8cC](https://sepolia.basescan.org/address/0x412601099fACB2512ea56BCaCaF7022C6284a8cC)
+- ClankerHookStaticFeeV2: [0x2c1EddAb2dF9bB0dd9463C57923c3021eec6E8cc](https://sepolia.basescan.org/address/0x2c1EddAb2dF9bB0dd9463C57923c3021eec6E8cc)
 - ClankerSniperAuctionV2: [0x8CBD6694A9DFc0eF4D1cd333e013B88E7003E10A](https://sepolia.basescan.org/address/0x8CBD6694A9DFc0eF4D1cd333e013B88E7003E10A)
 - ClankerSniperUtilV2: [0x4DC6348D38E3e199D7Ea032c8cfE4EbDe94b442A](https://sepolia.basescan.org/address/0x4DC6348D38E3e199D7Ea032c8cfE4EbDe94b442A)
 
