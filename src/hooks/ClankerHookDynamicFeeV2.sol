@@ -24,9 +24,12 @@ contract ClankerHookDynamicFeeV2 is ClankerHookV2, IClankerHookDynamicFee {
 
     error TickReturned(int24 tick);
 
-    constructor(address _poolManager, address _factory, address _weth)
-        ClankerHookV2(_poolManager, _factory, _weth)
-    {}
+    constructor(
+        address _poolManager,
+        address _factory,
+        address _poolExtensionAllowlist,
+        address _weth
+    ) ClankerHookV2(_poolManager, _factory, _poolExtensionAllowlist, _weth) {}
 
     function poolConfigVars(PoolId poolId) external view returns (PoolDynamicConfigVars memory) {
         return _poolConfigVars[poolId];
