@@ -12,6 +12,7 @@ interface IClankerHookV2 is IClankerHook {
     error MevModuleNotOperational();
     error Unauthorized();
     error OnlyFactoryPoolsCanHaveExtensions();
+    error PoolExtensionNotEnabled();
 
     event PoolExtensionSuccess(PoolId poolId);
     event PoolExtensionFailed(PoolId poolId, IPoolManager.SwapParams swapParams);

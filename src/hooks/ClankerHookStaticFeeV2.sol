@@ -12,9 +12,12 @@ contract ClankerHookStaticFeeV2 is ClankerHookV2, IClankerHookStaticFee {
     mapping(PoolId => uint24) public clankerFee;
     mapping(PoolId => uint24) public pairedFee;
 
-    constructor(address _poolManager, address _factory, address _weth)
-        ClankerHookV2(_poolManager, _factory, _weth)
-    {}
+    constructor(
+        address _poolManager,
+        address _factory,
+        address _poolExtensionAllowlist,
+        address _weth
+    ) ClankerHookV2(_poolManager, _factory, _poolExtensionAllowlist, _weth) {}
 
     function _initializeFeeData(PoolKey memory poolKey, bytes memory feeData) internal override {
         PoolStaticConfigVars memory _poolConfigVars = abi.decode(feeData, (PoolStaticConfigVars));
