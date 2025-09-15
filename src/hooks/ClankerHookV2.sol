@@ -13,6 +13,7 @@ import {Hooks, IHooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
 
 import {IClankerHookV2PoolExtension} from "./interfaces/IClankerHookV2PoolExtension.sol";
+import {IClankerPoolExtensionAllowlist} from "./interfaces/IClankerPoolExtensionAllowlist.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {IClankerHook} from "../interfaces/IClankerHook.sol";
@@ -51,6 +52,7 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
     uint24 public protocolFee;
 
     address public immutable factory;
+    IClankerPoolExtensionAllowlist public immutable poolExtensionAllowlist;
     address public immutable weth;
 
     mapping(PoolId => bool) public clankerIsToken0;
@@ -73,10 +75,14 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
         _;
     }
 
-    constructor(address _poolManager, address _factory, address _weth)
-        BaseHook(IPoolManager(_poolManager))
-    {
+    constructor(
+        address _poolManager,
+        address _factory,
+        address _poolExtensionAllowlist,
+        address _weth
+    ) BaseHook(IPoolManager(_poolManager)) {
         factory = _factory;
+        poolExtensionAllowlist = IClankerPoolExtensionAllowlist(_poolExtensionAllowlist);
         weth = _weth;
     }
 
@@ -104,6 +110,11 @@ abstract contract ClankerHookV2 is BaseHook, IClankerHookV2 {
         bytes memory poolExtensionData
     ) internal virtual {
         if (_poolExtension != address(0)) {
+            // check that the pool extension is enabled
+            if (!poolExtensionAllowlist.enabledExtensions(_poolExtension)) {
+                revert PoolExtensionNotEnabled();
+            }
+
             IClankerHookV2PoolExtension(_poolExtension).initializePreLockerSetup(
                 poolKey, clankerIsToken0[poolKey.toId()], poolExtensionData
             );
