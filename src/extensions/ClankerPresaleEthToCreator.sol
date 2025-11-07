@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {IClanker} from "../interfaces/IClanker.sol";
 import {IClankerExtension} from "../interfaces/IClankerExtension.sol";
+import {IClankerPresaleAllowlist} from "./interfaces/IClankerPresaleAllowlist.sol";
 import {IClankerPresaleEthToCreator} from "./interfaces/IClankerPresaleEthToCreator.sol";
 
 import {IOwnerAdmins} from "../interfaces/IOwnerAdmins.sol";
@@ -11,24 +12,34 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
 
-import {Test, console} from "forge-std/Test.sol";
-
 contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCreator, OwnerAdmins {
-    uint256 public constant WITHDRAW_FEE_BPS = 100; // 1%
-    uint256 public constant MAX_PRESALE_DURATION = 6 weeks;
-    uint256 public constant SALT_SET_BUFFER = 1 days; // buffer for presale admin to set salt for deployment
-    uint256 public constant DEPLOYMENT_BAD_BUFFER = 1 days; // buffer for deployment to be considered bad
     IClanker public immutable factory;
 
-    uint256 private _presaleId;
-    mapping(uint256 presaleId => Presale presale) public presaleState;
+    // deployment time buffers
+    uint256 public constant SALT_SET_BUFFER = 1 days; // buffer for presale admin to set salt for deployment
+    uint256 public constant DEPLOYMENT_BAD_BUFFER = 3 days; // buffer for deployment to be considered bad
 
-    // presale user buy and claim amounts
+    // max presale duration
+    uint256 public constant MAX_PRESALE_DURATION = 6 weeks;
+
+    // min lockup duration
+    uint256 public minLockupDuration;
+
+    // clanker fee info
+    uint256 public clankerDefaultFeeBps;
+    uint256 public constant BPS = 10_000;
+    address public clankerFeeRecipient;
+
+    // next presale id
+    uint256 private _presaleId;
+
+    // per presale info
+    mapping(uint256 presaleId => Presale presale) public presaleState;
     mapping(uint256 presaleId => mapping(address user => uint256 amount)) public presaleBuys;
     mapping(uint256 presaleId => mapping(address user => uint256 amount)) public presaleClaimed;
 
-    address public withdrawFeeRecipient;
-    uint256 public withdrawFeeAccumulated;
+    // enabled allowlists
+    mapping(address allowlist => bool enabled) public enabledAllowlists;
 
     modifier onlyFactory() {
         if (msg.sender != address(factory)) revert Unauthorized();
@@ -43,7 +54,7 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
     modifier updatePresaleState(uint256 presaleId_) {
         Presale storage presale = presaleState[presaleId_];
 
-        // update to minumum or failed if time expired if in active state
+        // update to minimum or failed if time expired if in active state
         if (presale.status == PresaleStatus.Active && presale.endTime <= block.timestamp) {
             if (presale.ethRaised >= presale.minEthGoal) {
                 presale.status = PresaleStatus.SuccessfulMinimumHit;
@@ -54,28 +65,57 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         _;
     }
 
-    constructor(address owner_, address factory_, address withdrawFeeRecipient_)
+    constructor(address owner_, address factory_, address clankerFeeRecipient_)
         OwnerAdmins(owner_)
     {
         factory = IClanker(factory_);
         _presaleId = 1;
-        withdrawFeeRecipient = withdrawFeeRecipient_;
+        clankerFeeRecipient = clankerFeeRecipient_;
+        minLockupDuration = 7 days;
+        clankerDefaultFeeBps = 500; // 5%
+    }
+
+    function setAllowlist(address allowlist, bool enabled) external onlyOwner {
+        enabledAllowlists[allowlist] = enabled;
+        emit SetAllowlist(allowlist, enabled);
+    }
+
+    function setMinLockupDuration(uint256 minLockupDuration_) external onlyOwner {
+        uint256 oldMinLockupDuration = minLockupDuration;
+        minLockupDuration = minLockupDuration_;
+        emit MinLockupDurationUpdated(oldMinLockupDuration, minLockupDuration_);
+    }
+
+    function setClankerDefaultFee(uint256 clankerDefaultFeeBps_) external onlyOwner {
+        if (clankerDefaultFeeBps_ >= BPS) revert InvalidClankerFee();
+
+        uint256 oldFee = clankerDefaultFeeBps;
+        clankerDefaultFeeBps = clankerDefaultFeeBps_;
+
+        emit ClankerDefaultFeeUpdated(oldFee, clankerDefaultFeeBps_);
+    }
+
+    function setClankerFeeForPresale(uint256 presaleId, uint256 newFee)
+        external
+        presaleExists(presaleId)
+        onlyOwner
+    {
+        // can only set lower
+        if (newFee >= presaleState[presaleId].clankerFee) revert InvalidClankerFee();
+
+        uint256 oldFee = presaleState[presaleId].clankerFee;
+        presaleState[presaleId].clankerFee = newFee;
+        emit ClankerFeeUpdatedForPresale(presaleId, oldFee, newFee);
     }
 
     function getPresale(uint256 presaleId_) public view returns (Presale memory) {
         return presaleState[presaleId_];
     }
 
-    function setWithdrawFeeRecipient(address recipient) external onlyOwner {
-        withdrawFeeRecipient = recipient;
-    }
-
-    function withdrawWithdrawFee() external nonReentrant {
-        uint256 amount = withdrawFeeAccumulated;
-        if (amount == 0) revert NoWithdrawFeeAccumulated();
-        withdrawFeeAccumulated = 0;
-        (bool sent,) = payable(withdrawFeeRecipient).call{value: amount}("");
-        if (!sent) revert EthTransferFailed();
+    function setClankerFeeRecipient(address recipient) external onlyOwner {
+        address oldRecipient = clankerFeeRecipient;
+        clankerFeeRecipient = recipient;
+        emit ClankerFeeRecipientUpdated(oldRecipient, recipient);
     }
 
     function startPresale(
@@ -83,15 +123,17 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         uint256 minEthGoal,
         uint256 maxEthGoal,
         uint256 presaleDuration,
-        address recipient,
+        address presaleOwner,
         uint256 lockupDuration,
-        uint256 vestingDuration
+        uint256 vestingDuration,
+        address allowlist,
+        bytes calldata allowlistInitializationData
     ) external onlyAdmin returns (uint256 presaleId) {
         presaleId = _presaleId++;
 
-        // ensure presale recipient is present set
-        if (recipient == address(0)) {
-            revert InvalidPresaleRecipient();
+        // ensure presale presaleOwner is set
+        if (presaleOwner == address(0)) {
+            revert InvalidPresaleOwner();
         }
 
         // ensure presale is present the last extension in the token's deployment config
@@ -129,6 +171,23 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
             revert InvalidPresaleDuration();
         }
 
+        // ensure lockup duration is valid
+        if (lockupDuration < minLockupDuration) {
+            revert LockupDurationTooShort();
+        }
+
+        // check that allowlist checker is enabled
+        if (allowlist != address(0) && !enabledAllowlists[allowlist]) {
+            revert AllowlistNotEnabled();
+        }
+
+        // initialize allowlist checker
+        if (allowlist != address(0)) {
+            IClankerPresaleAllowlist(allowlist).initialize(
+                presaleId, presaleOwner, allowlistInitializationData
+            );
+        }
+
         // set token deployment config's presale ID
         deploymentConfig.extensionConfigs[deploymentConfig.extensionConfigs.length - 1]
             .extensionData = abi.encode(presaleId);
@@ -140,7 +199,8 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         // encode the presale id of zero into the extension data for the simulation
 
         presaleState[presaleId] = Presale({
-            recipient: recipient,
+            presaleOwner: presaleOwner,
+            allowlist: allowlist,
             deploymentConfig: deploymentConfig,
             status: PresaleStatus.Active,
             minEthGoal: minEthGoal,
@@ -154,7 +214,21 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
             lockupDuration: lockupDuration,
             vestingDuration: vestingDuration,
             lockupEndTime: 0,
-            vestingEndTime: 0
+            vestingEndTime: 0,
+            clankerFee: clankerDefaultFeeBps
+        });
+
+        emit PresaleStarted({
+            presaleId: presaleId,
+            allowlist: allowlist,
+            deploymentConfig: deploymentConfig,
+            minEthGoal: minEthGoal,
+            maxEthGoal: maxEthGoal,
+            presaleDuration: presaleDuration,
+            presaleOwner: presaleOwner,
+            lockupDuration: lockupDuration,
+            vestingDuration: vestingDuration,
+            clankerFeeBps: clankerDefaultFeeBps
         });
     }
 
@@ -166,11 +240,17 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
     {
         Presale storage presale = presaleState[presaleId];
 
-        // ensure presale is ready for deployment
-        if (
-            presale.status != PresaleStatus.SuccessfulMaximumHit
-                && presale.status != PresaleStatus.SuccessfulMinimumHit
-        ) revert PresaleNotReadyForDeployment();
+        // presale can be ended in three states:
+        // 1. maximum eth is hit at any point
+        // 2. min eth is hit and deadline has expired
+        // 3. min eth is hit and the presale owner wants to end the presale early (must be in active state)
+        bool presaleCanEnd = presale.status == PresaleStatus.SuccessfulMaximumHit
+            || presale.status == PresaleStatus.SuccessfulMinimumHit
+            || (
+                presale.status == PresaleStatus.Active && msg.sender == presale.presaleOwner
+                    && presale.minEthGoal <= presale.ethRaised
+            );
+        if (!presaleCanEnd) revert PresaleNotReadyForDeployment();
 
         // if presale's end time has passed without a successful deployment, set the presale to failed
         //
@@ -180,48 +260,46 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         if (presale.endTime + DEPLOYMENT_BAD_BUFFER < block.timestamp) {
             // allow users to withdraw their eth
             presale.status = PresaleStatus.Failed;
+            emit PresaleFailed(presaleId);
             return address(0);
         }
 
-        // give privelged deployers opportuninty to set the salt
+        // give presale owner opportunity to set the salt
         if (
-            msg.sender != presale.recipient && !admins[msg.sender]
+            msg.sender != presale.presaleOwner
                 && block.timestamp < presale.endTime + SALT_SET_BUFFER
-        ) revert PresaleSaltBufferNotExpired();
+        ) {
+            revert PresaleSaltBufferNotExpired();
+        }
 
         // update token deployment config with salt
         presale.deploymentConfig.tokenConfig.salt = salt;
 
-        // update presale percentage to reflect amount of tokens that were sold
-        if (presale.ethRaised != presale.maxEthGoal) {
-            uint256 originalBps = uint256(
-                presale.deploymentConfig.extensionConfigs[presale
-                    .deploymentConfig
-                    .extensionConfigs
-                    .length - 1].extensionBps
-            );
-
-            uint256 newBps = (originalBps * presale.ethRaised) / presale.maxEthGoal;
-            presale.deploymentConfig.extensionConfigs[presale
-                .deploymentConfig
-                .extensionConfigs
-                .length - 1].extensionBps = uint16(newBps);
-        }
-
         // record lockup and vesting end times
         presale.lockupEndTime = block.timestamp + presale.lockupDuration;
-        presale.vestingEndTime = block.timestamp + presale.lockupDuration + presale.vestingDuration;
+        presale.vestingEndTime = presale.lockupEndTime + presale.vestingDuration;
 
         // set deployment ongoing to true
         presale.deploymentExpected = true;
 
         // deploy token
         token = factory.deployToken(presale.deploymentConfig);
+
+        emit PresaleDeployed(presaleId, token);
     }
 
-    function buyIntoPresale(uint256 presaleId)
-        external
-        payable
+    // buy into presale without passing info to the allowlist checker
+    function buyIntoPresale(uint256 presaleId) external payable {
+        _buyIntoPresale(presaleId, bytes(""));
+    }
+
+    // buy into the presale with an allowlist checker
+    function buyIntoPresaleWithProof(uint256 presaleId, bytes calldata proof) external payable {
+        _buyIntoPresale(presaleId, proof);
+    }
+
+    function _buyIntoPresale(uint256 presaleId, bytes memory proof)
+        internal
         presaleExists(presaleId)
         nonReentrant
     {
@@ -240,6 +318,15 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         // record a user's eth contribution
         presaleBuys[presaleId][msg.sender] += ethToUse;
 
+        // check if a user is allowlisted
+        if (presale.allowlist != address(0)) {
+            uint256 allowedAmount = IClankerPresaleAllowlist(presale.allowlist)
+                .getAllowedAmountForBuyer(presaleId, msg.sender, proof);
+            if (presaleBuys[presaleId][msg.sender] > allowedAmount) {
+                revert AllowlistAmountExceeded(allowedAmount);
+            }
+        }
+
         // update eth raised
         presale.ethRaised += ethToUse;
 
@@ -254,6 +341,8 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
             (bool sent,) = payable(msg.sender).call{value: msg.value - ethToUse}("");
             if (!sent) revert EthTransferFailed();
         }
+
+        emit PresaleBuy(presaleId, msg.sender, ethToUse, presale.ethRaised);
     }
 
     function withdrawFromPresale(uint256 presaleId, uint256 amount, address recipient)
@@ -265,11 +354,9 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         Presale storage presale = presaleState[presaleId];
 
         // ensure presale is ongoing or failed
-        if (
-            presale.status == PresaleStatus.SuccessfulMaximumHit
-                || presale.status == PresaleStatus.SuccessfulMinimumHit
-                || presale.status == PresaleStatus.Claimable
-        ) revert PresaleSuccessful();
+        if (presale.status != PresaleStatus.Failed && presale.status != PresaleStatus.Active) {
+            revert PresaleSuccessful();
+        }
 
         // ensure user has a balance in the presale
         if (presaleBuys[presaleId][msg.sender] < amount) revert InsufficientBalance();
@@ -280,23 +367,11 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         // update eth raised
         presale.ethRaised -= amount;
 
-        // determine fee
-        uint256 fee;
-        if (presale.status == PresaleStatus.Failed) {
-            fee = 0;
-        } else {
-            fee = (amount * WITHDRAW_FEE_BPS) / 10_000;
-        }
-        uint256 amountAfterFee = amount - fee;
-
-        // accumulate fee
-        if (fee > 0) {
-            withdrawFeeAccumulated += fee;
-        }
-
         // send eth to recipient
-        (bool sent,) = payable(recipient).call{value: amountAfterFee}("");
+        (bool sent,) = payable(recipient).call{value: amount}("");
         if (!sent) revert EthTransferFailed();
+
+        emit WithdrawFromPresale(presaleId, msg.sender, amount, presale.ethRaised);
     }
 
     function claimTokens(uint256 presaleId) external presaleExists(presaleId) {
@@ -326,6 +401,8 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
 
         // send tokens to user
         IERC20(presale.deployedToken).transfer(msg.sender, tokenAmount);
+
+        emit ClaimTokens(presaleId, msg.sender, tokenAmount);
     }
 
     // helper function to determine amount of tokens available to claim
@@ -356,7 +433,7 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         // determine amount of tokens to send to user
         uint256 ethBuyInAmount;
         if (block.timestamp >= vestingEndTime) {
-            // if vesting period has not passed, send rest of tokens
+            // if vesting period has passed, send rest of tokens
             ethBuyInAmount = presaleBuys[presaleId][user] - presaleClaimed[presaleId][user];
         } else {
             // if vesting period has not passed, send vested portion of tokens minus what
@@ -372,8 +449,13 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
     function claimEth(uint256 presaleId, address recipient) external presaleExists(presaleId) {
         Presale storage presale = presaleState[presaleId];
 
-        // if not presale recipient, revert
-        if (msg.sender != presale.recipient) revert Unauthorized();
+        // if not presale owner or owner, revert
+        if (msg.sender != presale.presaleOwner && msg.sender != owner()) revert Unauthorized();
+
+        // if owner, must be sending eth fee to the presale owner
+        if (msg.sender == owner() && recipient != presale.presaleOwner) {
+            revert RecipientMustBePresaleOwner();
+        }
 
         // if eth has already been claimed, revert
         if (presale.ethClaimed) revert PresaleAlreadyClaimed();
@@ -382,12 +464,21 @@ contract ClankerPresaleEthToCreator is ReentrancyGuard, IClankerPresaleEthToCrea
         // ensure presale is claimable
         if (presale.status != PresaleStatus.Claimable) revert PresaleNotClaimable();
 
-        // determine eth amount to send
-        uint256 ethAmount = presale.ethRaised;
+        // determine fee
+        uint256 fee = (presale.ethRaised * presale.clankerFee) / BPS;
+        uint256 amountAfterFee = presale.ethRaised - fee;
 
-        // send eth to recipient
-        (bool sent,) = payable(recipient).call{value: ethAmount}("");
+        // send eth to user's recipient
+        (bool sent,) = payable(recipient).call{value: amountAfterFee}("");
         if (!sent) revert EthTransferFailed();
+
+        // send eth to clanker
+        if (fee > 0) {
+            (bool sent,) = payable(clankerFeeRecipient).call{value: fee}("");
+            if (!sent) revert EthTransferFailed();
+        }
+
+        emit ClaimEth(presaleId, recipient, amountAfterFee, fee);
     }
 
     function receiveTokens(
