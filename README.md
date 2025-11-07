@@ -37,6 +37,7 @@ Check out our [dune dashboards](https://dune.com/clanker_protection_team) for to
 - ClankerSniperAuctionV2: [0xebB25BB797D82CB78E1bc70406b13233c0854413](https://basescan.org/address/0xebB25BB797D82CB78E1bc70406b13233c0854413)
 - ClankerSniperUtilV2: [0xC5AA2945d52a4096b946891ef8e01668f82eB74E](https://basescan.org/address/0xC5AA2945d52a4096b946891ef8e01668f82eB74E)
 - ClankerAirdropV2: [0xf652B3610D75D81871bf96DB50825d9af28391E0](https://basescan.org/address/0xf652B3610D75D81871bf96DB50825d9af28391E0)
+- ClankerUniv3EthDevBuy: [0x8718238cF0063b69513A22f6a278789cDE5B08B5](https://basescan.org/address/0x8718238cF0063b69513A22f6a278789cDE5B08B5)
 
 ### Base Sepolia
 #### v4.0
